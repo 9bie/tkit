@@ -34,32 +34,32 @@ HWND GetWindowHwndByPorcessID(DWORD dwProcessID)
 {
     DWORD dwPID = 0;
     HWND hwndRet = NULL;
-    // 鍙栧緱绗竴涓獥鍙ｅ彞鏌?
+
     HWND hwndWindow = GetTopWindow(0);
     while (hwndWindow)
     {
         dwPID = 0;
-        // 閫氳繃绐楀彛鍙ユ焺鍙栧緱杩涚▼ID
+
         DWORD dwTheardID = GetWindowThreadProcessId(hwndWindow, &dwPID);
         if (dwTheardID != 0)
         {   
            
-            // 鍒ゆ柇鍜屽弬鏁颁紶鍏ョ殑杩涚▼ID鏄惁鐩哥瓑
+
             if (dwPID == dwProcessID)
             {
-                // 杩涚▼ID鐩哥瓑锛屽垯璁板綍绐楀彛鍙ユ焺
+
                 printf("dwpid:%d\nhandle:%d\n",dwPID,hwndWindow);
                 hwndRet = hwndWindow;
                 
                 break;
             }
         }
-        // 鍙栧緱涓嬩竴涓獥鍙ｅ彞鏌?
+
         hwndWindow = GetNextWindow(hwndWindow, GW_HWNDNEXT);
     }
-    // 涓婇潰鍙栧緱鐨勭獥鍙ｏ紝涓嶄竴瀹氭槸鏈€涓婂眰鐨勭獥鍙ｏ紝闇€瑕侀€氳繃GetParent鑾峰彇鏈€椤跺眰绐楀彛
+
     HWND hwndWindowParent = NULL;
-    // 寰幆鏌ユ壘鐖剁獥鍙ｏ紝浠ヤ究淇濊瘉杩斿洖鐨勫彞鏌勬槸鏈€椤跺眰鐨勭獥鍙ｅ彞鏌?
+
     while (hwndRet != NULL)
     {
         hwndWindowParent = GetParent(hwndRet);
@@ -69,7 +69,7 @@ HWND GetWindowHwndByPorcessID(DWORD dwProcessID)
         }
         hwndRet = hwndWindowParent;
     }
-    // 杩斿洖绐楀彛鍙ユ焺
+
     return hwndRet;
 
 }
@@ -97,17 +97,17 @@ return 0;
 }
 do
 {
-// 姣旇緝杩涚▼鍚?聽
+
 if(lstrcmpi(ps.szExeFile,szProcessName)==0)
 {
-// 鎵惧埌浜?
+
 dwPID = ps.th32ProcessID;
 CloseHandle(hSnapshot);
 return dwPID;
 }
 }
 while(Process32Next(hSnapshot,&ps));
-// 娌℃湁鎵惧埌 聽
+
 CloseHandle(hSnapshot);
 return 0;
 }
