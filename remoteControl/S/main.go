@@ -15,7 +15,12 @@ var serverMap = make(map[net.Conn]S)
 var sign = "customize\x00"
 var shellInChan = make(chan string)
 var shellOutChan = make(chan string)
-
+var nowHandle net.Conn
+var httpPort string
+var serverPort string
 func main() {
-	listen(":80")
+	httpPort = ":80"
+	serverPort = ":81"
+	HTTPService(httpPort)
+	//listen(serverPort)
 }
