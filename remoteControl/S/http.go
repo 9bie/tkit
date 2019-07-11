@@ -8,7 +8,6 @@ import (
 	"html/template"
 	"io"
 	"log"
-	"net"
 	"net/http"
 )
 
@@ -19,19 +18,19 @@ type TemplateRenderer struct {
 	templates *template.Template
 }
 
-func RemoveWs(i *websocket.Conn)[]*websocket.Conn{
-	for i2,v := range wsMap{
-		if v == i{
-			return append(wsMap[:i2],wsMap[i2+1:]...)
+func RemoveWs(i *websocket.Conn) []*websocket.Conn {
+	for i2, v := range wsMap {
+		if v == i {
+			return append(wsMap[:i2], wsMap[i2+1:]...)
 		}
 	}
 	//missing value
 	return wsMap
 }
-func Broadcast(msg string){
-	for _,i:=range wsMap{
+func Broadcast(msg string) {
+	for _, i := range wsMap {
 		err := i.WriteMessage(websocket.TextMessage, []byte(msg))
-		if err != nil{
+		if err != nil {
 			i.Close()
 		}
 	}
@@ -55,25 +54,33 @@ func WsHandle(c echo.Context) error {
 	defer func() {
 		_ = ws.Close()
 	}()
-	wsMap = append(wsMap,ws)
-	for ; ;  {
-		_,msg,err:= ws.ReadMessage()
-		if err != nil{
+	wsMap = append(wsMap, ws)
+	for ; ; {
+		_, msg, err := ws.ReadMessage()
+		if err != nil {
 			return err
 		}
 		switch string(msg) {
 		case "online":
 			var n string
-			if _, ok := serverMap[nowHandle]; nowHandle != nil && !ok{
+			if _, ok := serverMap[nowHandle]; nowHandle != nil && !ok {
 				n = ""
-			}else{
+			} else {
 				n = serverMap[nowHandle].ip
 			}
-			msg:=fmt.Sprintf("%s|%s|%s",httpPort,serverPort,n)
+			msg := fmt.Sprintf("config|%s|%s|%s", httpPort, serverPort, n)
 			err := ws.WriteMessage(websocket.TextMessage, []byte(msg))
-			if err != nil{
+			if err != nil {
 				wsMap = RemoveWs(ws)
 				return err
+			}
+			for _,v := range serverMap{
+				onlineMsg := fmt.Sprintf("add|%s|%s|%s|%s|%s",v.uuid,v.intIp,v.ip,v.memory,v.OS)
+				err := ws.WriteMessage(websocket.TextMessage, []byte(onlineMsg))
+				if err != nil {
+					wsMap = RemoveWs(ws)
+					return err
+				}
 			}
 		case "offline":
 			wsMap = RemoveWs(ws)
@@ -87,7 +94,7 @@ func Index(c echo.Context) error {
 	return c.Render(http.StatusOK, "Manager.html", nil)
 }
 
-func HTTPService(port string){
+func HTTPService(port string) {
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
@@ -95,8 +102,8 @@ func HTTPService(port string){
 		templates: template.Must(template.ParseGlob("templates/*.html")),
 	}
 	e.Renderer = renderer
-	e.GET("/",Index)
-	e.GET("/ws",WsHandle)
+	e.GET("/", Index)
+	e.GET("/ws", WsHandle)
 	e.Static("/static", "templates/static")
 	log.Fatal(e.Start(port))
 }

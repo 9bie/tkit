@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/fananchong/cstruct-go"
+	uuid "github.com/satori/go.uuid"
 	"net"
 	"strings"
 	"time"
@@ -48,7 +49,7 @@ func doServerStuff(conn net.Conn) {
 	for {
 
 		if _, ok := serverMap[conn]; !ok {
-			//第一次运行
+			//第一次上线
 			buf := make([]byte, unsafe.Sizeof(CMSG{}))
 			l, err := conn.Read(buf)
 			if err != nil {
@@ -56,7 +57,7 @@ func doServerStuff(conn net.Conn) {
 				return
 			}
 			var msg *CMSG = *(**CMSG)(unsafe.Pointer(&buf))
-			fmt.Printf("Recv:\n\tMSG: %s \n\tMOD: %d \n\tLONG: %d \n", msg.sign, msg.mod, msg.msg_l)
+			//fmt.Printf("Recv:\n\tMSG: %s \n\tMOD: %d \n\tLONG: %d \n", msg.sign, msg.mod, msg.msg_l)
 			if string(msg.sign[:]) == "customize\x00" {
 				if msg.msg_l != 0 && msg.mod == SERVER_SYSTEMINFO { // 是第一次登陆带有系统信息的包
 					buf := make([]byte, msg.msg_l)
@@ -66,24 +67,34 @@ func doServerStuff(conn net.Conn) {
 						_ = conn.Close() // 第一次接收就GG了，完全没必要再鸟他了
 						return
 					}
-					fmt.Println(string(buf[:]))
+
 					sp := strings.Split(string(buf[:]), "\n")
-					if len(sp) == 3 {
+					fmt.Println("len:",len(sp),string(buf[:]))
+					u1,_ := uuid.NewV4()
+					if len(sp) == 4 {
 						serverMap[conn] = S{
+							uuid: u1.String(),
 							memory: sp[2],
 							OS:     sp[1],
 							ip:     sp[0],
+							intIp:conn.RemoteAddr().String(),
 							status: SERVER_HEARTS,
 						}
 						fmt.Println(sp[0], sp[1], sp[2])
+
 					} else {
 						serverMap[conn] = S{
+							uuid: u1.String(),
 							memory: "unknown",
 							OS:     "unknown",
 							ip:     "unknown",
+							intIp:conn.RemoteAddr().String(),
 							status: SERVER_HEARTS,
 						}
+
 					}
+					onlineMsg := fmt.Sprintf("add|%s|%s|%s|%s|%s",serverMap[conn].uuid,serverMap[conn].intIp,serverMap[conn].ip,serverMap[conn].memory,serverMap[conn].OS)
+					Broadcast(onlineMsg)
 
 				}
 			}
@@ -96,11 +107,15 @@ func doServerStuff(conn net.Conn) {
 				if err != nil {
 					fmt.Println("Error reading Code:", l, err.Error())
 					_ = conn.Close()
+					offlineMsg := fmt.Sprintf("remove|%s|%s",serverMap[conn].uuid,serverMap[conn].intIp)
+					Broadcast(offlineMsg)
 					delete(serverMap, conn) //因为这个不是第一次，所以conn肯定会在表里，得删除
+
 					return
 				}
 				var msg *CMSG = *(**CMSG)(unsafe.Pointer(&buf))
-				fmt.Printf("Recv:\n\tMSG: %s \n\tMOD: %d \n\tLONG: %d \n", msg.sign, msg.mod, msg.msg_l)
+
+				//fmt.Printf("Recv:\n\tMSG: %s \n\tMOD: %d \n\tLONG: %d \n", msg.sign, msg.mod, msg.msg_l)
 				//go func() {
 				//	//test function
 				//
@@ -116,8 +131,13 @@ func doServerStuff(conn net.Conn) {
 				//	}
 				//}()
 
-				time.Sleep(1 * time.Second)
-				Handle(conn, SERVER_HEARTS) // 十秒一次心跳包
+
+				switch msg.mod {
+				case SERVER_HEARTS:
+					time.Sleep(10 * time.Second)
+					Handle(conn, SERVER_HEARTS) // 十秒一次心跳包
+				}
+
 			} else {
 				//其他操作中，暂时停止
 				time.Sleep(10 * time.Second)

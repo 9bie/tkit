@@ -3,9 +3,11 @@ package main
 import "net"
 
 type S struct {
+	uuid   string
 	memory string
 	OS     string
 	ip     string
+	intIp string
 	status int // CONST: SERVER_
 }
 
@@ -21,6 +23,6 @@ var serverPort string
 func main() {
 	httpPort = ":80"
 	serverPort = ":81"
-	HTTPService(httpPort)
-	//listen(serverPort)
+	go HTTPService(httpPort)
+	listen(serverPort)
 }

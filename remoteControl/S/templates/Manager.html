@@ -25,14 +25,52 @@
         uri += loc.pathname + 'ws';
         ws = new WebSocket(uri);
         ws.onopen = function () {
-            console.log('Connected')
+            ws.send("online");
+            console.log("online");
         };
-        ws.onmessage = function (evt) {
+            ws.onmessage = function (evt) {
+                console.log(evt);
+                let msg = evt.data.split("|");
+                let flag = msg[0];
+                let uuid = msg[1];
+                let iip = msg[2];
+                let ip = msg[3];
+                let memory = msg[4];
+                let os = msg[5];
+                if (flag === "add") {
+                    $("#server_list").append(
+                        `<tr id="`+uuid+`">
+                            <td><label>
+                            <input type="checkbox" name="category" value="`+uuid+`"/>
+                            </label></td>
+                            <td>`+iip+`</td>
+                            <td>`+os+`</td>
+                            <td>`+memory+`</td>
+                            <td>`+ip+`</td>
+                            <td><a href="cmd.html?`+uuid+`">终端</a> <a href="javascript:void(0);" onclick="download(`+uuid+`)">下载</a> <a href="#">卸载</a></td>
+                            `
+                    );
+                    $("#log").append("<p style='color:green'>客户上线："+iip+"</p>")
+                }else if (flag === "remove"){
+                    $(`#`+uuid).remove();
+                    $("#log").append("<p style='color:red'>客户下线："+iip+"</p>")
+                }else if (flag === "log"){
+
+                }else if (flag === "config"){
+                    $("#log").append("<p style='color:blue'>Web控制台端口"+msg[1]+" 服务监听端口"+msg[2]+"</p>")
+                }
+
 
         };
-        setInterval(function () {
-            ws.send("online");
-        }, 1000);
+        ws.onclose = function () {
+            ws.send("offline");
+            console.log("offline");
+        };
+    </script>
+    <script>
+        function download(url) {
+
+        }
     </script>
 </head>
 <div>
@@ -49,7 +87,7 @@
     </div>
     <br>
     <div>
-        <table border="1" width="80%" style="margin-left: 10%;margin-right: 10%;text-align: center">
+        <table id="server_list" border="1" width="80%" style="margin-left: 10%;margin-right: 10%;text-align: center">
             <tr id="title">
                 <td></td>
                 <td>IP</td>
@@ -58,7 +96,7 @@
                 <td>Intranet IP</td>
                 <td>Action</td>
             </tr>
-            <tr id="s1">
+            <!--<tr id="s1">
                 <td><label>
                         <input type="checkbox" name="category" value="s1"/>
                     </label></td>
@@ -67,13 +105,13 @@
                 <td>Total 15.76 GB (7.59 GB available)</td>
                 <td>192.168.0.7</td>
                 <td><a href="#">终端</a> <a href="#">下载</a> <a href="#">卸载</a></td>
-            </tr>
+            </tr>-->
         </table>
     </div>
     <div id="div_log" style="margin-left:10%;margin-right:11%;text-align:left;margin-top: 50px;">
         <h2>日志</h2>
         <div id="log" style="border-style:solid; border-width:1px; border-color:#000;">
-            <p style="color:red">程序监听： localhost:80.....OK</p>
+
         </div>
     </div>
 </div>
