@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 )
 
 var upgrader = websocket.Upgrader{}
@@ -60,22 +61,20 @@ func WsHandle(c echo.Context) error {
 		if err != nil {
 			return err
 		}
-		switch string(msg) {
+		m := strings.Split(string(msg), "|")
+		if len(m) == 1 {
+			m[0] = string(msg)
+		}
+		switch m[0] {
 		case "online":
-			var n string
-			if _, ok := serverMap[nowHandle]; nowHandle != nil && !ok {
-				n = ""
-			} else {
-				n = serverMap[nowHandle].ip
-			}
-			msg := fmt.Sprintf("config|%s|%s|%s", httpPort, serverPort, n)
+			msg := fmt.Sprintf("config|%s|%s", httpPort, serverPort)
 			err := ws.WriteMessage(websocket.TextMessage, []byte(msg))
 			if err != nil {
 				wsMap = RemoveWs(ws)
 				return err
 			}
-			for _,v := range serverMap{
-				onlineMsg := fmt.Sprintf("add|%s|%s|%s|%s|%s",v.uuid,v.intIp,v.ip,v.memory,v.OS)
+			for _, v := range serverMap {
+				onlineMsg := fmt.Sprintf("add|%s|%s|%s|%s|%s", v.uuid, v.intIp, v.ip, v.memory, v.OS)
 				err := ws.WriteMessage(websocket.TextMessage, []byte(onlineMsg))
 				if err != nil {
 					wsMap = RemoveWs(ws)
@@ -85,7 +84,28 @@ func WsHandle(c echo.Context) error {
 		case "offline":
 			wsMap = RemoveWs(ws)
 			return nil
+		case "shell":
+			var code string
+			id := msg[1]
+			if len(msg) == 2 {
+				code = ""
+			} else {
+				code = string(msg[2])
+			}
+			for i := range serverMap {
+				if serverMap[i].uuid == string(id) {
+					if serverMap[i].status == SERVER_SHELL {
+						serverMap[i].shellInChan <- string(msg[2])
+					} else {
+						Handle(i, SERVER_SHELL)
+						if code != "" {
+							serverMap[i].shellInChan <- string(msg[2])
+						}
+					}
+				}
+			}
 		}
+
 	}
 }
 

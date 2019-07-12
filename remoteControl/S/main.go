@@ -9,15 +9,14 @@ type S struct {
 	ip     string
 	intIp string
 	status int // CONST: SERVER_
+	shellInChan chan string
 }
 
 var tcpConn bool
 var httpConn bool
-var serverMap = make(map[net.Conn]S)
+var serverMap = make(map[net.Conn]*S)
 var sign = "customize\x00"
-var shellInChan = make(chan string)
-var shellOutChan = make(chan string)
-var nowHandle net.Conn
+
 var httpPort string
 var serverPort string
 func main() {
