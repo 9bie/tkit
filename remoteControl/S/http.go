@@ -32,6 +32,7 @@ func Broadcast(msg string) {
 	for _, i := range wsMap {
 		err := i.WriteMessage(websocket.TextMessage, []byte(msg))
 		if err != nil {
+			fmt.Println("Broadcast ws :",err.Error())
 			i.Close()
 		}
 	}
@@ -61,10 +62,12 @@ func WsHandle(c echo.Context) error {
 		if err != nil {
 			return err
 		}
+
 		m := strings.Split(string(msg), "|")
 		if len(m) == 1 {
 			m[0] = string(msg)
 		}
+		fmt.Println(string(msg),m[0])
 		switch m[0] {
 		case "online":
 			msg := fmt.Sprintf("config|%s|%s", httpPort, serverPort)
@@ -86,20 +89,22 @@ func WsHandle(c echo.Context) error {
 			return nil
 		case "shell":
 			var code string
-			id := msg[1]
-			if len(msg) == 2 {
+			id := m[1]
+			fmt.Println("id:",id)
+			if len(m) == 2 {
 				code = ""
 			} else {
-				code = string(msg[2])
+				code = string(m[2])
 			}
 			for i := range serverMap {
 				if serverMap[i].uuid == string(id) {
+					fmt.Println("find it.")
 					if serverMap[i].status == SERVER_SHELL {
-						serverMap[i].shellInChan <- string(msg[2])
+						serverMap[i].shellInChan <- string(m[2])
 					} else {
 						Handle(i, SERVER_SHELL)
 						if code != "" {
-							serverMap[i].shellInChan <- string(msg[2])
+							serverMap[i].shellInChan <- string(m[2])
 						}
 					}
 				}

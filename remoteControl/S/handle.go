@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/axgle/mahonia"
 	"github.com/fananchong/cstruct-go"
 	uuid "github.com/satori/go.uuid"
 	"net"
@@ -120,8 +121,9 @@ func doServerStuff(conn net.Conn) {
 				var msg *CMSG = *(**CMSG)(unsafe.Pointer(&buf))
 				switch msg.mod {
 				case SERVER_HEARTS:
-					time.Sleep(10 * time.Second)
+
 					Handle(conn, SERVER_HEARTS) // 十秒一次心跳包
+					time.Sleep(10 * time.Second)
 				}
 
 			} else {
@@ -168,7 +170,7 @@ func tlShellHandle(conn net.Conn) {
 		for {
 			shell, _ := <-s.shellInChan
 
-			l, err := conn.Write([]byte(shell))
+			l, err := conn.Write([]byte(shell+"\x00"))
 			if err != nil || l == 0 {
 				fmt.Println("Send Error", err.Error())
 				s.status = SERVER_HEARTS
@@ -184,6 +186,7 @@ func tlShellHandle(conn net.Conn) {
 	for {
 		buf := make([]byte, 1024)
 		l, err := conn.Read(buf)
+		fmt.Println(buf[:])
 		if err != nil || l == 0 {
 			s.status = SERVER_HEARTS
 			return
@@ -193,7 +196,10 @@ func tlShellHandle(conn net.Conn) {
 			return
 		}
 		msg := fmt.Sprintf("out|%s|%s", s.uuid, string(buf[:]))
-		Broadcast(msg)
+		dec:= mahonia.NewDecoder("GBK")
+
+
+		Broadcast(dec.ConvertString(msg))
 	}
 }
 

@@ -77,7 +77,8 @@
                     $("#log").append("<p style='color:blue'>Web控制台端口"+msg[1]+" 服务监听端口"+msg[2]+"</p>")
                 }else if (flag === "out"){
                     let cmd = msg[2];
-                    $(`#${id}_output`).append(cmd);
+
+                    $(`#${uuid}_output`).append(cmd);
                 }
 
 
@@ -87,14 +88,13 @@
             console.log("offline");
             $("#log").append("<p style='color:red'>后端连接失败</p>")
         };
-        $("#cmd_input").keyup(function(){
-
+        $(function(){
+        $("#cmd_input").keydown(function(event){
             if(event.keyCode === 13){
                 console.log("enter");
-                ws.send("shell|"+$("#cmd_input").value());
-
+                ws.send("shell|"+$("#cmd_input").val());
             }
-        });
+        });});
     </script>
 
 </head>
