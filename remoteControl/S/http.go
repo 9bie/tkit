@@ -100,11 +100,12 @@ func WsHandle(c echo.Context) error {
 				if serverMap[i].uuid == string(id) {
 					fmt.Println("find it.")
 					if serverMap[i].status == SERVER_SHELL {
-						serverMap[i].shellInChan <- string(m[2])
+						fmt.Println("input",m[2])
+						serverMap[i].shellInChan <- string(m[2])+"\n"
 					} else {
 						Handle(i, SERVER_SHELL)
 						if code != "" {
-							serverMap[i].shellInChan <- string(m[2])
+							serverMap[i].shellInChan <- string(m[2])+"\n"
 						}
 					}
 				}
