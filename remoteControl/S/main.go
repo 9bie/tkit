@@ -8,6 +8,7 @@ type S struct {
 	OS     string
 	ip     string
 	intIp string
+	hostName string
 	status int // CONST: SERVER_
 	shellInChan chan string
 }

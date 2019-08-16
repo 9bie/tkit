@@ -122,7 +122,7 @@ func WsHandle(c echo.Context) error {
 			}
 		case "download":
 			raw := m[1]
-			var run uint8
+			var run uint16
 			iid := strings.Split(raw,",")
 			if len(m) != 5{
 				continue

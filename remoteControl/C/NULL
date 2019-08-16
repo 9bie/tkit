@@ -1,0 +1,172 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+  <link rel="stylesheet" href="/~style.css" type="text/css" />
+  <link rel="stylesheet" href="/~style.menu.css" type="text/css" />
+  <title>HFS /</title>
+  <link rel="shortcut icon" href="favicon.ico" />
+
+<!--[if lte IE 5.5]>
+<style type="text/css">
+.menu ul li a, .menu ul li a:visited { width:151px; w\idth:139px; }
+</style>
+<![endif]-->
+
+  
+<style type="text/css"></style>
+
+</head>
+<body>
+<table width='100%'>
+<tr>
+  <td width='95%'>
+    <div id=folderlabel>µ±Ç°Ä¿Â¼</div>
+    <div id=folder><a href="/">Ê×Ò³/</a></div>
+
+<td nowrap>
+    <div class=button>
+    <form style='width:160px'>
+    <input name=search size=10 value="">
+    <input type=submit value="ËÑË÷">
+    </form>
+    </div>
+  <td nowrap>
+    <div class="menu">
+    <ul>
+    <li class=last><a href="#"><span style='position:relative; top:5px; left:35px;'>.: ²Ëµ¥ :.</span><!--[if IE 7]><!--></a><!--<![endif]-->
+    	<!--[if lte IE 6]><table><tr><td><![endif]-->
+    	<ul>
+<li><a href="~login"><img src="/~img27" /> µÇÂ¼</a></li>
+
+<li><a href="~folder.tar?recursive">Ä¿Â¼´ò°üÏÂÔØ</a></li>
+    	<li class="last"><a href="/?tpl=list&folders-filter=\&recursive">ÎÄ¼þÁÐ±í</a></li>
+    	</ul>
+    	<!--[if lte IE 6]></td></tr></table></a><![endif]-->
+    </li>
+    </ul>
+    </div>
+
+</table>
+
+<div id=body>
+  
+  
+  <div id=folderstats>0 ¸öÎÄ¼þ¼Ð,  14 ¸öÎÄ¼þ - ×Ü´óÐ¡: 4.43 MB</div>
+    <table id=files cellpadding=5>
+    
+    <th><a href="/?sort=n&rev=1">ÎÄ¼þÃû</a><a href="/?sort=e&rev=1">.À©Õ¹Ãû</a>
+    <th><a href="/?sort=s&rev=1">´óÐ¡</a>
+    <th><a href="/?sort=t&rev=1">ÐÞ¸ÄÊ±¼ä</a>
+    <th><a href="/?sort=d&rev=1">µã»÷Á¿</a>
+      <tr><td>
+  <span class=flag>&nbsp;×îÐÂ&nbsp;</span>
+  
+  <a href="0213.exe"><img src="/~img42" /> 0213.exe</a>
+  
+   
+<td align=right>129.50 KB<td align=right>2017-7-26 15:56:36<td align=right>1
+  <tr><td>
+  <span class=flag>&nbsp;×îÐÂ&nbsp;</span>
+  
+  <a href="2k8x64.exe"><img src="/~img42" /> 2k8x64.exe</a>
+  
+   
+<td align=right>10.00 KB<td align=right>2014-3-26 15:29:12<td align=right>1
+  <tr><td>
+  <span class=flag>&nbsp;×îÐÂ&nbsp;</span>
+  
+  <a href="8120.exe"><img src="/~img42" /> 8120.exe</a>
+  
+   
+<td align=right>92.00 KB<td align=right>2018-5-19 10:52:40<td align=right>3
+  <tr><td>
+  
+  
+  <a href="cmd.exe"><img src="/~img40" /> cmd.exe</a>
+  
+   
+<td align=right>460.00 KB<td align=right>2008-4-14 20:00:00<td align=right>1
+  <tr><td>
+  <span class=flag>&nbsp;×îÐÂ&nbsp;</span>
+  
+  <a href="iis7.exe"><img src="/~img42" /> iis7.exe</a>
+  
+   
+<td align=right>199.74 KB<td align=right>2011-6-1 16:34:12<td align=right>1
+  <tr><td>
+  
+  
+  <a href="m.zip"><img src="/~img43" /> m.zip</a>
+  
+   
+<td align=right>1.72 MB<td align=right>2019-8-11 2:38:44<td align=right>1
+  <tr><td>
+  
+  
+  <a href="MDS.exe"><img src="/~img42" /> MDS.exe</a>
+  
+   
+<td align=right>80.00 KB<td align=right>2019-8-9 4:08:10<td align=right>5
+  <tr><td>
+  <span class=flag>&nbsp;×îÐÂ&nbsp;</span>
+  
+  <a href="ms10048X64.exe"><img src="/~img42" /> ms10048X64.exe</a>
+  
+   
+<td align=right>25.00 KB<td align=right>2010-9-27 11:08:52<td align=right>1
+  <tr><td>
+  <span class=flag>&nbsp;×îÐÂ&nbsp;</span>
+  
+  <a href="ms11046.exe"><img src="/~img42" /> ms11046.exe</a>
+  
+   
+<td align=right>168.05 KB<td align=right>2011-12-2 15:42:30<td align=right>1
+  <tr><td>
+  <span class=flag>&nbsp;×îÐÂ&nbsp;</span>
+  
+  <a href="ms11080.exe"><img src="/~img42" /> ms11080.exe</a>
+  
+   
+<td align=right>104.00 KB<td align=right>2012-10-31 22:33:22<td align=right>1
+  <tr><td>
+  <span class=flag>&nbsp;×îÐÂ&nbsp;</span>
+  
+  <a href="slwl.exe"><img src="/~img42" /> slwl.exe</a>
+  
+   
+<td align=right>44.00 KB<td align=right>2011-6-1 14:21:58<td align=right>0
+  <tr><td>
+  <span class=flag>&nbsp;×îÐÂ&nbsp;</span>
+  
+  <a href="sysret.exe"><img src="/~img42" /> sysret.exe</a>
+  
+   
+<td align=right>657.00 KB<td align=right>2012-9-12 4:23:00<td align=right>1
+  <tr><td>
+  <span class=flag>&nbsp;×îÐÂ&nbsp;</span>
+  
+  <a href="vnc.exe"><img src="/~img45" /> vnc.exe</a>
+  
+   
+<td align=right>264.95 KB<td align=right>2017-7-3 19:04:48<td align=right>10
+  <tr><td>
+  
+  
+  <a href="Win2003.exe"><img src="/~img41" /> Win2003.exe</a>
+  
+   
+<td align=right>539.00 KB<td align=right>2012-11-5 22:20:22<td align=right>0
+
+    </table>
+</div>
+
+<div id=footer>
+  <a href="http://www.rejetto.com/hfs/">HttpFileServer 2.3 beta Ëæ²¨ºº»¯°æ</a>
+  <br />·þÎñÆ÷Ê±¼ä: 2019-8-16 19:04:22
+  <br />ÔÚÏßÊ±³¤: (7 å¤©) 15:28:36
+</div>
+
+</body>
+</html>
+<!-- Build-time: 0.187 -->

