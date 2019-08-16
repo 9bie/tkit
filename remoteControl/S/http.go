@@ -149,10 +149,33 @@ func WsHandle(c echo.Context) error {
 
 	}
 }
-
+func HTTPGenerate(c echo.Context) error{
+	var mod = 0
+	domain := c.FormValue("domain")
+	port := c.FormValue("port")
+	version :=  c.FormValue("version")
+	if version == "default"{
+		mod = 0
+	}else if version == "onlyRun"{
+		mod = 1
+	}
+	File:=Generate(domain,port,mod)
+	if File == ""{
+		return c.String(http.StatusOK,"生成失败")
+	}
+	return c.File("TEMP\\"+File)
+}
 func Index(c echo.Context) error {
+	cookie, err := c.Cookie("password")
+	if err != nil {
+		return c.Render(http.StatusOK,"index.html",nil)
+	}
+	if cookie.Value != password{
+		return c.Render(http.StatusOK,"index.html",nil)
+	}else{
+		return c.Render(http.StatusOK, "Manager.html", nil)
+	}
 
-	return c.Render(http.StatusOK, "Manager.html", nil)
 }
 
 func HTTPService(port string) {
@@ -162,9 +185,12 @@ func HTTPService(port string) {
 	renderer := &TemplateRenderer{
 		templates: template.Must(template.ParseGlob("templates/*.html")),
 	}
+
+
 	e.Renderer = renderer
 	e.GET("/", Index)
 	e.GET("/ws", WsHandle)
 	e.Static("/static", "templates/static")
+	e.GET("/generate",HTTPGenerate)
 	log.Fatal(e.Start(port))
 }

